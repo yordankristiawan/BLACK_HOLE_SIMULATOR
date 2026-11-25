@@ -211,8 +211,7 @@
     .focus-mode #focus-restore { display: flex; }
     .sheet-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
     @media (max-width: 767px) {
-      .hud-panel { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(8, 11, 19, 0.92); }
-      .hud-panel-amber { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(14, 12, 12, 0.93); }
+      .hud-panel, .hud-panel-amber { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     }
   </style>
 </head>
@@ -537,7 +536,6 @@ const state = {
   showLabels: !(window.matchMedia && window.matchMedia("(max-width: 767px)").matches), // 3D Spatial annotations in Explorer
   explodedMode: false, // Anatomy structural separation mode
   sheetOpen: false,    // Mobile bottom-sheet (Explorer / Anatomi)
-  quality: 'auto',      // 'auto' | 0 (rendah) | 1 (sedang) | 2 (tinggi)
   selectedAnatomy: 'event_horizon',
   // Camera spherical coordinates
   camTheta: 0.25,
@@ -608,12 +606,10 @@ const fragmentShader = `
   uniform float uJets;
   uniform float uExploded;
   uniform int uRayMode; // 1: Schwarzschild null geodesic; 0: legacy artistic approximation
+  uniform int uMaxSteps; // Batas iterasi adaptif berdasarkan kemampuan perangkat
   uniform int uHighlightPart; // 0: none, 1: horizon, 2: disk, 3: photon sphere, 4: shadow, 5: singularity
   uniform float uZoom;
   uniform vec2 uOff;
-  uniform int uMaxSteps;
-  uniform float uDphi;
-  uniform int uOct;
 
   #define PI 3.14159265359
   #define TAU 6.28318530718
@@ -642,7 +638,6 @@ const fragmentShader = `
     float val = 0.0;
     float amp = 0.52;
     for (int i = 0; i < 4; i++) {
-      if (i >= uOct) break;
       val += amp * noise3D(p);
       p = p * 2.07 + vec3(0.13, -0.17, 0.21);
       amp *= 0.48;
@@ -799,7 +794,7 @@ const fragmentShader = `
         // Physical Schwarzschild spatial path: RK4 integration of the null-geodesic
         // orbit equation in its orbital plane. This computes the light path, while
         // disk emissivity/colour remain deliberately illustrative.
-        float dphi = uDphi;
+        const float dphi = 0.02;
         vec2 orbitNext = integrateSchwarzschildOrbitRK4(orbitU, orbitDU, dphi);
         orbitU = orbitNext.x;
         orbitDU = orbitNext.y;
@@ -959,14 +954,34 @@ const fragmentShader = `
 const mqMobile = window.matchMedia('(max-width: 767px)');
 let viewZoomCur = 1.0;
 let viewOffY = 0.0;
+
+// Profil performa perangkat: kualitas visual disesuaikan tanpa mengubah
+// persamaan geodesik, konstanta fisika, maupun model emisi yang digunakan.
+const deviceMemoryGB = Number(navigator.deviceMemory || 0);
+const hardwareThreads = Number(navigator.hardwareConcurrency || 0);
+const isLowEndDevice =
+  (deviceMemoryGB > 0 && deviceMemoryGB <= 4) ||
+  (hardwareThreads > 0 && hardwareThreads <= 4);
+const isMobileDevice = mqMobile.matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const renderQuality = isLowEndDevice ? 'low' : (isMobileDevice ? 'mobile' : 'desktop');
+
 function isMobile() { return mqMobile.matches; }
 function getRenderDPR() {
   const d = window.devicePixelRatio || 1;
-  const sch = state.rayModel === 'schwarzschild';
-  const tbl = isMobile()
-    ? (sch ? [0.5, 0.65, 0.8] : [0.7, 0.85, 1.0])
-    : (sch ? [0.9, 1.0, 1.15] : [1.2, 1.5, 1.75]);
-  return Math.min(d, tbl[qLevel]);
+  if (renderQuality === 'low') return Math.min(d, 0.50);
+  if (renderQuality === 'mobile') return Math.min(d, 0.68);
+  return Math.min(d, state.rayModel === 'schwarzschild' ? 1.15 : 1.5);
+}
+function getRayStepBudget() {
+  if (renderQuality === 'low') return 112;
+  if (renderQuality === 'mobile') return 176;
+  return 512;
+}
+function getTargetFPS() {
+  if (document.hidden) return 0;
+  if (renderQuality === 'low') return (state.activeModule === 'hero' || state.activeModule === 'explorer' || state.activeModule === 'anatomy') ? 24 : 12;
+  if (renderQuality === 'mobile') return (state.activeModule === 'hero' || state.activeModule === 'explorer' || state.activeModule === 'anatomy') ? 30 : 15;
+  return 60;
 }
 function viewZoomFactor() {
   const a = window.innerWidth / window.innerHeight;
@@ -988,71 +1003,6 @@ function toggleSheet() {
   if (b) b.classList.toggle('hidden', !state.sheetOpen);
   const t = document.getElementById('sheet-toggle');
   if (t) t.textContent = state.sheetOpen ? 'Tutup ▾' : (state.activeModule === 'anatomy' ? 'Detail ▴' : 'Kontrol ▴');
-}
-
-// ---- Kualitas adaptif & pembatas FPS -------------------------------------
-const QUALITY = [
-  { name: 'Rendah', steps: 200, dphi: 0.06,  oct: 2 },
-  { name: 'Sedang', steps: 320, dphi: 0.035, oct: 3 },
-  { name: 'Tinggi', steps: 512, dphi: 0.02,  oct: 4 }
-];
-let qLevel = 1;
-const VISUAL_MODULES = ['hero', 'explorer', 'anatomy', 'interstellar'];
-let lastFrameMs = 0, perfStart = 0, perfFrames = 0, perfWarm = 0;
-
-function applyQuality() {
-  const q = QUALITY[qLevel];
-  if (blackHoleMesh) {
-    const u = blackHoleMesh.material.uniforms;
-    u.uMaxSteps.value = q.steps;
-    u.uDphi.value = q.dphi;
-    u.uOct.value = q.oct;
-  }
-  if (renderer) onWindowResize();
-}
-function qualityRowHTML() {
-  const opts = [['auto', 'Auto'], [0, 'Rendah'], [1, 'Sedang'], [2, 'Tinggi']];
-  return '<span class="text-[10px] font-mono text-slate-400 shrink-0">Kualitas:</span>' + opts.map(([v, l]) => {
-    const on = state.quality === v;
-    const arg = typeof v === 'string' ? "'" + v + "'" : v;
-    const label = (v === 'auto' && on) ? 'Auto (' + QUALITY[qLevel].name + ')' : l;
-    return '<button onclick="setQuality(' + arg + ')" class="px-2.5 py-1 rounded-lg text-[11px] border transition ' +
-      (on ? 'bg-amber-500/25 border-amber-400 text-amber-200' : 'bg-white/5 border-white/10 text-slate-400') + '">' + label + '</button>';
-  }).join('');
-}
-function refreshQualityRow() {
-  const el = document.getElementById('quality-row');
-  if (el) el.innerHTML = qualityRowHTML();
-}
-function setQuality(v) {
-  state.quality = v;
-  qLevel = (v === 'auto') ? (isMobile() ? 1 : 2) : v;
-  perfWarm = 0; perfStart = 0;
-  applyQuality();
-  refreshQualityRow();
-}
-function frameInterval() {
-  const vis = VISUAL_MODULES.includes(state.activeModule);
-  if (isMobile()) return vis ? 33.3 : 100; // 30 FPS di HP; modul teks hanya ~10 FPS
-  return vis ? 0 : 50;
-}
-function perfTick(now) {
-  if (state.quality !== 'auto' || !VISUAL_MODULES.includes(state.activeModule) || document.hidden) { perfStart = 0; return; }
-  if (!perfStart) { perfStart = now; perfFrames = 0; return; }
-  perfFrames++;
-  const el = now - perfStart;
-  if (el < 2500) return;
-  const fps = perfFrames * 1000 / el;
-  perfStart = now; perfFrames = 0; perfWarm++;
-  if (perfWarm <= 1) return; // abaikan jendela pertama (kompilasi shader)
-  const minFps = isMobile() ? 22 : 45;
-  if (fps < minFps && qLevel > 0) {
-    qLevel--;
-    perfWarm = 0;
-    applyQuality();
-    showToast('Performa dioptimalkan otomatis: kualitas ' + QUALITY[qLevel].name);
-    refreshQualityRow();
-  }
 }
 
 function initBlackHoleEngine() {
@@ -1080,19 +1030,15 @@ function initBlackHoleEngine() {
       uJets: { value: state.jets ? 1.0 : 0.0 },
       uExploded: { value: 0.0 },
       uRayMode: { value: state.rayModel === 'schwarzschild' ? 1 : 0 },
+      uMaxSteps: { value: getRayStepBudget() },
       uHighlightPart: { value: 0 },
       uZoom: { value: 1.0 },
-      uOff: { value: new THREE.Vector2(0, 0) },
-      uMaxSteps: { value: 320 },
-      uDphi: { value: 0.035 },
-      uOct: { value: 3 }
+      uOff: { value: new THREE.Vector2(0, 0) }
     }
   });
 
   blackHoleMesh = new THREE.Mesh(geometry, material);
   scene.add(blackHoleMesh);
-  qLevel = isMobile() ? 1 : 2;
-  applyQuality();
 
   window.addEventListener('resize', onWindowResize);
   setupCanvasInteractions(canvas);
@@ -1102,6 +1048,7 @@ function onWindowResize() {
   if (!renderer || !blackHoleMesh) return;
   const dpr = getRenderDPR();
   renderer.setPixelRatio(dpr);
+  if (blackHoleMesh) blackHoleMesh.material.uniforms.uMaxSteps.value = getRayStepBudget();
   renderer.setSize(window.innerWidth, window.innerHeight);
   blackHoleMesh.material.uniforms.uResolution.value.set(
     window.innerWidth * dpr,
@@ -1218,12 +1165,19 @@ function updateSpatialAnnotations(camPos, camTarget) {
   layer.innerHTML = html;
 }
 
-function animate() {
+let lastMainRenderTime = 0;
+function animate(now = performance.now()) {
   requestAnimationFrame(animate);
-  const nowMs = performance.now();
-  if (nowMs - lastFrameMs < frameInterval() - 3) return;
-  lastFrameMs = nowMs;
-  perfTick(nowMs);
+
+  // Batasi frekuensi render pada perangkat terbatas. Perhitungan fisika shader
+  // tetap memakai persamaan yang sama; hanya jumlah sampel visual per frame
+  // dan frekuensi gambar yang disesuaikan.
+  const targetFPS = getTargetFPS();
+  if (targetFPS <= 0) return;
+  const frameInterval = 1000 / targetFPS;
+  if (now - lastMainRenderTime < frameInterval) return;
+  lastMainRenderTime = now;
+
   const elapsed = clock.getElapsedTime();
 
   // Gentle auto-orbit on Hero or when enabled
@@ -1259,6 +1213,7 @@ function animate() {
     u.uDoppler.value += ((state.doppler ? 1.0 : 0.0) - u.uDoppler.value) * 0.1;
     u.uJets.value += ((state.jets ? 1.0 : 0.0) - u.uJets.value) * 0.1;
     u.uRayMode.value = state.rayModel === 'schwarzschild' ? 1 : 0;
+    u.uMaxSteps.value = getRayStepBudget();
     viewZoomCur = viewZoomFactor();
     viewOffY += (-targetShiftY() * viewZoomCur - viewOffY) * 0.1;
     u.uZoom.value = viewZoomCur;
@@ -1783,7 +1738,6 @@ function renderExplorerMobile() {
             <button onclick="toggleExplorerFlag('jets')" class="${tog(state.jets, 'bg-sky-500/25 border-sky-400 text-sky-200')}">Jet: ${state.jets ? 'ON' : 'OFF'}</button>
             <button onclick="toggleExplorerFlag('autoRotate')" id="btn-autorotate" class="${tog(state.autoRotate, 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200')}">Orbit Otomatis: ${state.autoRotate ? 'ON' : 'OFF'}</button>
           </div>
-          <div id="quality-row" class="flex flex-wrap items-center gap-1.5">${qualityRowHTML()}</div>
           <p class="text-[10px] font-mono text-slate-500">Geser untuk memutar • cubit untuk zoom</p>
         </div>
       </div>
@@ -2228,8 +2182,9 @@ async function initARCanvasFallback() {
   const canvas = document.getElementById('ar-fallback-canvas');
   if (!canvas) return;
 
-  fallbackRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  fallbackRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  fallbackRenderer = new THREE.WebGLRenderer({ canvas, antialias: renderQuality === 'desktop', alpha: true, powerPreference: 'low-power' });
+  const arDPRCap = renderQuality === 'low' ? 0.65 : (renderQuality === 'mobile' ? 0.9 : 1.25);
+  fallbackRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, arDPRCap));
   fallbackRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
 
   fallbackScene = new THREE.Scene();
