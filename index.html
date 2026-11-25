@@ -1,0 +1,3633 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>BLACK HOLE: BEYOND THE EVENT HORIZON — Eksplorasi Astronomi 3D & WebAR</title>
+  
+  <!-- Google Fonts: Space Grotesk, Inter, JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- KaTeX for crisp LaTeX equations -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/contrib/auto-render.min.js"></script>
+
+  <!-- Three.js r128 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            display: ['Space Grotesk', 'sans-serif'],
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#030408',
+            surface: '#0A0D16',
+            accretion: {
+              gold: '#F59E0B',
+              amber: '#FB923C',
+              hot: '#FEF3C7',
+            },
+            cherenkov: '#38BDF8',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    :root {
+      --bg-obsidian: #030408;
+      --gold-glow: rgba(245, 158, 11, 0.35);
+      --blue-glow: rgba(56, 189, 248, 0.25);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background-color: var(--bg-obsidian);
+      color: #F1F5F9;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(3, 4, 8, 0.8);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(245, 158, 11, 0.3);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(245, 158, 11, 0.6);
+    }
+
+    /* Glassmorphism Scientific HUD */
+    .hud-panel {
+      background: linear-gradient(145deg, rgba(11, 15, 25, 0.82) 0%, rgba(5, 7, 13, 0.90) 100%);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .hud-panel-amber {
+      background: linear-gradient(145deg, rgba(22, 16, 10, 0.84) 0%, rgba(7, 8, 14, 0.92) 100%);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65), 0 0 30px rgba(245, 158, 11, 0.08);
+    }
+
+    .glow-text-amber {
+      text-shadow: 0 0 28px rgba(245, 158, 11, 0.45);
+    }
+
+    .glow-text-blue {
+      text-shadow: 0 0 24px rgba(56, 189, 248, 0.45);
+    }
+
+    /* Custom Range Sliders */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 5px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #F59E0B;
+      border: 2px solid #FEF3C7;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(245, 158, 11, 0.8);
+      transition: transform 0.15s ease;
+    }
+    input[type="range"]::-webkit-slider-thumb:hover {
+      transform: scale(1.18);
+    }
+    input[type="range"].slider-blue::-webkit-slider-thumb {
+      background: #38BDF8;
+      border-color: #E0F2FE;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.8);
+    }
+
+    /* Fullscreen WebGL Background Canvas */
+    #cosmos-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      display: block;
+      touch-action: none;
+    }
+
+    /* Subtle Scanline / Observatory Grid Overlay */
+    .observatory-grid {
+      background-image: 
+        radial-gradient(circle at 50% 50%, transparent 0%, rgba(3, 4, 8, 0.55) 100%),
+        linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+      background-size: 100% 100%, 48px 48px, 48px 48px;
+      pointer-events: none;
+    }
+
+    /* Smooth View Transitions */
+    .module-section {
+      animation: fadeSlideIn 0.42s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulseRing {
+      0%, 100% { transform: scale(1); opacity: 0.7; }
+      50% { transform: scale(1.15); opacity: 1; }
+    }
+
+    .annotation-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      pointer-events: auto;
+      transition: opacity 0.25s ease, transform 0.2s ease;
+    }
+    .annotation-pin:hover {
+      z-index: 30;
+      transform: translate(-50%, -50%) scale(1.06);
+    }
+
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+
+    .katex {
+      font-size: 1.08em !important;
+      color: #F8FAFC;
+    }
+    .focus-mode header, .focus-mode #app-container, .focus-mode #annotation-layer { display: none !important; }
+    #focus-restore { display: none; }
+    .focus-mode #focus-restore { display: flex; }
+    .sheet-scroll { overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+    @media (max-width: 767px) {
+      .hud-panel, .hud-panel-amber { backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
+    }
+  </style>
+</head>
+<body class="bg-obsidian text-slate-100 antialiased selection:bg-amber-500/30 selection:text-amber-200">
+
+  <!-- Fullscreen Relativistic Black Hole Raymarched WebGL Canvas -->
+  <canvas id="cosmos-canvas"></canvas>
+  <div class="fixed inset-0 observatory-grid z-[1]"></div>
+
+  <!-- 3D Spatial Annotation Overlay Layer (Active in Explorer Mode) -->
+  <div id="annotation-layer" class="fixed inset-0 z-[5] pointer-events-none hidden"></div>
+
+  <!-- Top Scientific Observatory Header / Navigation -->
+  <header class="fixed top-0 left-0 right-0 z-40 px-3 sm:px-6 pt-2 sm:pt-3 pb-1 sm:pb-2 pointer-events-none">
+    <div class="max-w-[1440px] mx-auto flex flex-col gap-2">
+      <div class="hud-panel rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-3 pointer-events-auto">
+        <!-- Brand / Observatory ID -->
+        <button onclick="navigateTo('hero')" class="flex items-center gap-3 text-left group focus:outline-none">
+          <div class="relative w-9 h-9 rounded-full bg-black border border-amber-500/50 flex items-center justify-center shadow-[0_0_18px_rgba(245,158,11,0.4)] group-hover:border-amber-400 transition">
+            <div class="w-4 h-4 rounded-full bg-black border-2 border-amber-400 shadow-[0_0_8px_#F59E0B]"></div>
+            <div class="absolute inset-0 rounded-full border border-amber-300/30 scale-125 animate-pulse"></div>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-display font-bold text-xs sm:text-sm tracking-[0.12em] sm:tracking-[0.16em] text-white uppercase"><span class="sm:hidden">EVENT HORIZON</span><span class="hidden sm:inline">BEYOND THE EVENT HORIZON</span></span>
+              <span class="hidden md:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">RELATIVISTIC LAB v2.6</span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-mono hidden sm:block">Eksplorasi Astrofisika 3D &amp; WebAR • Kurasi Ilmiah EHT / NASA / LIGO</p>
+          </div>
+        </button>
+
+        <!-- Right Telemetry & Quick Epistemic Legend Toggle -->
+        <div class="flex items-center gap-2">
+          <div class="hidden xl:flex items-center gap-3 px-3 py-1.5 rounded-xl bg-white/[0.03] border border-white/[0.06] font-mono text-[11px] text-slate-300">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>Observasi</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-sky-400"></span>Teori/Simulasi</span>
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-amber-400"></span>Representasi</span>
+          </div>
+          <button onclick="toggleFocusMode()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-200 flex items-center gap-1.5 transition" title="Mode Fokus: sembunyikan antarmuka" aria-label="Mode Fokus">
+            <svg class="w-4 h-4 text-sky-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/></svg>
+            <span class="hidden sm:inline">Fokus</span>
+          </button>
+          <button onclick="toggleEpistemicModal()" class="px-2.5 sm:px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-medium text-slate-200 flex items-center gap-1.5 transition" title="Standar Epistemik Ilmiah">
+            <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+            <span class="hidden sm:inline">Standar Ilmiah</span>
+          </button>
+          <button onclick="navigateTo('ar')" class="hidden sm:flex px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 hover:from-amber-500/30 hover:to-orange-500/30 border border-amber-500/40 text-xs font-semibold text-amber-300 items-center gap-1.5 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+            <span>WebAR</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Horizontal Scrollable 9-Module Navigation Pill Bar -->
+      <nav id="main-nav" class="hud-panel rounded-2xl p-1.5 flex items-center gap-1 overflow-x-auto no-scrollbar pointer-events-auto">
+        <!-- Populated dynamically by JS -->
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main id="app-container" class="relative z-10 pt-[104px] sm:pt-36 pb-3 sm:pb-16 px-3 sm:px-6 max-w-[1440px] mx-auto min-h-screen flex flex-col justify-between pointer-events-none">
+    <!-- Dynamic Module View Injected Here -->
+  </main>
+
+  <!-- Epistemic Standards Modal -->
+  <div id="epistemic-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+    <div class="hud-panel-amber max-w-2xl w-full rounded-3xl p-6 sm:p-8 relative max-h-[90vh] overflow-y-auto">
+      <button onclick="toggleEpistemicModal()" class="absolute top-5 right-5 w-9 h-9 rounded-full bg-white/5 hover:bg-white/15 flex items-center justify-center text-slate-300 transition">
+        ✕
+      </button>
+      <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-mono mb-3">
+        INTEGRITAS &amp; METODOLOGI ILMIAH
+      </div>
+      <h2 class="font-display text-2xl font-bold text-white mb-3">Klasifikasi Epistemik Visualisasi &amp; Data</h2>
+      <p class="text-sm text-slate-300 leading-relaxed mb-5">
+        Dalam astrofisika modern, pembedaan tegas antara bukti observasional langsung, prediksi matematis relativitas umum, dan rekonstruksi visual sangat krusial agar publik tidak menyalahartikan simulasi sebagai fotografi optik langsung.
+      </p>
+      <div class="space-y-3 text-sm">
+        <div class="p-3.5 rounded-2xl bg-emerald-500/10 border border-emerald-500/30">
+          <div class="font-semibold text-emerald-300 flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> 1. Fenomena Teramati (Observational Evidence)
+          </div>
+          <p class="text-slate-300 text-xs leading-relaxed">
+            Citra interferometri radio VLBI 1,3 mm oleh <strong>Event Horizon Telescope (EHT)</strong> pada M87* (2019) dan Sgr A* (2022), gelombang gravitasi penggabungan black hole oleh <strong>LIGO–Virgo–KAGRA</strong> (sejak GW150914, 2015), serta kinematika orbit bintang S2 di pusat Bima Sakti (Keck &amp; VLT GRAVITY).
+          </p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/30">
+          <div class="font-semibold text-sky-300 flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400"></span> 2. Prediksi Teoretis &amp; Simulasi Relativistik
+          </div>
+          <p class="text-slate-300 text-xs leading-relaxed">
+            Metrik Schwarzschild &amp; Kerr, dilatasi waktu gravitasi, pelensaan gravitasi medan kuat, cincin foton sub-struktur, dan <strong>Radiasi Hawking</strong> (prediksi mekanika kuantum pada ruang-waktu melengkung yang <em>belum terdeteksi secara langsung</em> dari black hole astrofisika karena suhunya jauh di bawah radiasi latar belakang kosmik 2,725 K).
+          </p>
+        </div>
+        <div class="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30">
+          <div class="font-semibold text-amber-300 flex items-center gap-2 mb-1">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> 3. Visualisasi Simulasi &amp; Representasi Artistik
+          </div>
+          <p class="text-slate-300 text-xs leading-relaxed">
+            Model 3D interaktif menyediakan dua pendekatan. <strong>Mode Geodesik Schwarzschild</strong> mengintegrasikan persamaan orbit geodesik null untuk lintasan cahaya pada ruang-waktu statis dan tidak berotasi; sementara emisi piringan, transfer warna, dan Doppler tetap disederhanakan. <strong>Mode Artistik</strong> mempertahankan pembelokan heuristik dan swirl visual, tetapi bukan solusi metrik Kerr. Keduanya merupakan simulasi edukatif, bukan foto teleskop atau prediksi observasional lengkap.
+          </p>
+        </div>
+      </div>
+      <div class="mt-6 flex justify-end">
+        <button onclick="toggleEpistemicModal()" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm transition">
+          Mengerti &amp; Lanjutkan Eksplorasi
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <button id="focus-restore" onclick="toggleFocusMode()" class="fixed bottom-5 right-4 z-50 items-center gap-2 px-4 py-2.5 rounded-full hud-panel-amber text-xs font-semibold text-amber-200">Tampilkan Antarmuka</button>
+
+  <!-- Toast / Status Notification -->
+  <div id="toast-box" class="fixed bottom-24 sm:bottom-5 left-3 right-3 sm:left-auto sm:right-5 z-50 pointer-events-none opacity-0 translate-y-3 transition-all duration-300">
+    <div id="toast-content" class="hud-panel-amber px-4 py-3 rounded-xl text-xs font-medium text-amber-200 shadow-2xl"></div>
+  </div>
+
+<script>
+// ============================================================================
+// 1. SCIENTIFIC DATA & STATE MANAGEMENT (BAHASA INDONESIA BAKU & AKURAT)
+// ============================================================================
+
+const MODULES = [
+  { id: 'hero', label: '01. Beranda', short: 'Beranda' },
+  { id: 'intro', label: '02. Pengenalan', short: 'Pengenalan' },
+  { id: 'explorer', label: '03. 3D Explorer', short: '3D Explorer' },
+  { id: 'anatomy', label: '04. Anatomi', short: 'Anatomi' },
+  { id: 'ar', label: '05. WebAR', short: 'WebAR' },
+  { id: 'physics', label: '06. Lab Fisika', short: 'Lab Fisika' },
+  { id: 'stellar', label: '07. Evolusi Bintang', short: 'Evolusi' },
+  { id: 'interstellar', label: '08. Studi Gargantua', short: 'Gargantua' },
+  { id: 'quiz', label: '09. Uji Pemahaman', short: 'Kuis' }
+];
+
+const ANATOMY_PARTS = [
+  {
+    id: 'event_horizon',
+    name: 'Event Horizon (Horizon Peristiwa)',
+    epistemic: 'Prediksi Teoretis & Dikonfirmasi Tak Langsung (EHT / LIGO)',
+    epistemicColor: 'emerald',
+    radiusFormula: 'r_+ = \\frac{GM}{c^2}(1+\\sqrt{1-a_*^2}) \\text{ (Kerr); } r_s=2GM/c^2 \\text{ (Schwarzschild)}',
+    summary: 'Batas kausal satu arah dalam ruang-waktu; untuk Schwarzschild radiusnya r_s = 2GM/c², sedangkan untuk Kerr horizon luar berada pada r_+.',
+    characteristics: 'Bukan permukaan fisik padat, melainkan batas geometris ruang-waktu. Pada titik ini, semua lintasan masa depan (kerucut cahaya) dari partikel maupun foton mengarah ke dalam menuju pusat.',
+    relation: 'Menentukan ukuran dasar black hole dan memisahkan alam semesta yang dapat diamati dari wilayah interior yang terisolasi secara kausal.',
+    offsetVec: [0, 0, 0],
+    cameraTarget: { theta: 0.45, phi: 1.25, radius: 5.2 }
+  },
+  {
+    id: 'accretion_disk',
+    name: 'Accretion Disk (Piringan Akresi)',
+    epistemic: 'Fenomena Teramati (EHT, Chandra X-Ray, VLBI)',
+    epistemicColor: 'emerald',
+    radiusFormula: 'r_{\\text{ISCO}}=3r_s \\text{ (Schwarzschild)}; \\; r_{\\text{ISCO}}\\to0.5r_s \\text{ (Kerr ekstrem, prograde)}',
+    summary: 'Struktur cakram plasma superpanas (jutaan hingga miliaran Kelvin) yang berputar sangat cepat mengitari black hole sebelum jatuh melewati batas orbit stabil terdalam (ISCO).',
+    characteristics: 'Gesekan viskos dan turbulensi magnetohidrodinamika (MRI) mengubah energi potensial gravitasi menjadi radiasi elektromagnetik intens (sinar-X, ultraviolet, dan gelombang radio). Sisi yang bergerak mendekati pengamat tampak jauh lebih terang akibat Relativistic Doppler Beaming.',
+    relation: 'Merupakan sumber cahaya utama yang memungkinkan siluet bayangan black hole diamati oleh instrumen seperti Event Horizon Telescope.',
+    offsetVec: [0, -1.65, 0],
+    cameraTarget: { theta: 0.3, phi: 1.08, radius: 7.4 }
+  },
+  {
+    id: 'photon_sphere',
+    name: 'Photon Sphere (Bola Foton)',
+    epistemic: 'Prediksi Relativitas Umum & Cincin Teramati EHT',
+    epistemicColor: 'sky',
+    radiusFormula: 'r_{\\text{ph}} = 1.5r_s \\text{ (Schwarzschild saja)}',
+    summary: 'Pada geometri Schwarzschild, photon sphere berada pada r = 1,5r_s. Untuk Kerr, struktur orbit foton bergantung pada spin dan arah orbit; tidak ada satu radius photon sphere universal.',
+    characteristics: 'Orbit foton di wilayah ini bersifat tidak stabil; gangguan sekecil apa pun akan membuat foton jatuh ke dalam event horizon atau terlepas menuju pengamat jauh setelah mengitari black hole berkali-kali, membentuk cincin cahaya tipis dan tajam (photon ring).',
+    relation: 'Membentuk batas luar terang di sekeliling bayangan black hole dan menghasilkan citra sekunder piringan akresi yang terpelintir.',
+    offsetVec: [0, 1.35, 0],
+    cameraTarget: { theta: 0.15, phi: 1.38, radius: 5.5 }
+  },
+  {
+    id: 'shadow',
+    name: 'Black Hole Shadow (Bayangan Black Hole)',
+    epistemic: 'Fenomena Teramati (EHT M87* & Sgr A*)',
+    epistemicColor: 'emerald',
+    radiusFormula: 'b_{\\text{crit}} = \\frac{3\\sqrt{3}}{2}r_s \\text{ (Schwarzschild)}',
+    summary: 'Daerah gelap di pusat citra yang tampak sekitar 2,6 kali lebih besar daripada radius event horizon sebenarnya akibat pembelokan lintasan cahaya ekstrem.',
+    characteristics: 'Setiap sinar cahaya yang melintas lebih dekat dari parameter dampak kritis b_crit akan tertangkap oleh gravitasi dan berakhir di event horizon, menciptakan defisit kecerahan sentral yang dikelilingi cincin emisi.',
+    relation: 'Ukuran dan bentuk bayangan menjadi uji presisi tinggi terhadap teori Relativitas Umum Einstein (teorema no-hair).',
+    offsetVec: [0, 0.65, 0],
+    cameraTarget: { theta: 0.05, phi: 1.48, radius: 6.2 }
+  },
+  {
+    id: 'singularity',
+    name: 'Singularity (Singularitas Gravitasi)',
+    epistemic: 'Prediksi Teoretis Klasik (Batas Berlakunya Relativitas Umum)',
+    epistemicColor: 'amber',
+    radiusFormula: 'r \\rightarrow 0 \\; (\\text{titik / cincin Kerr } a_*)',
+    summary: 'Wilayah di pusat terdalam tempat kelengkungan ruang-waktu dan rapat massa secara matematis mendekati tak hingga dalam persamaan Relativitas Umum klasik.',
+    characteristics: 'Dalam solusi klasik Schwarzschild, singularitas berada pada r = 0; dalam solusi klasik Kerr, singularitas berbentuk cincin pada koordinat Boyer–Lindquist. Makna fisiknya di dalam black hole astrofisika belum diketahui secara tuntas. Teori gravitasi kuantum diharapkan memperbaiki keterbatasan relativitas umum klasik, tetapi bentuk hasil akhirnya belum diketahui.',
+    relation: 'Menjadi pusat sumur gravitasi seluruh struktur black hole, namun sepenuhnya tersembunyi di balik event horizon (Hipotesis Sensor Kosmik).',
+    offsetVec: [0, -0.75, 0],
+    cameraTarget: { theta: 0.6, phi: 1.32, radius: 4.8 }
+  }
+];
+
+const QUIZ_QUESTIONS = [
+  {
+    q: '1. Mengapa cahaya tidak dapat melarikan diri setelah melewati Event Horizon sebuah black hole?',
+    options: [
+      'Karena partikel cahaya (foton) memiliki massa diam yang sangat besar sehingga ditarik gravitasi.',
+      'Karena kelengkungan ruang-waktu di dalam event horizon membuat semua lintasan kausal (kerucut cahaya) hanya mengarah ke pusat.',
+      'Karena piringan akresi di luar black hole menyerap seluruh foton yang mencoba keluar.',
+      'Karena suhu di dalam black hole membekukan gelombang elektromagnetik.'
+    ],
+    correct: 1,
+    explanation: 'Menurut Relativitas Umum Einstein, di dalam Event Horizon ruang-waktu melengkung begitu ekstrem sehingga arah radial ke dalam menjadi seperti arah waktu ke masa depan—tidak ada lintasan keluar yang mungkin ditempuh bahkan pada kecepatan cahaya c.'
+  },
+  {
+    q: '2. Berapakah perbandingan antara radius Photon Sphere (r_ph) dan radius Schwarzschild (r_s) pada black hole non-rotasi?',
+    options: [
+      'r_ph = 0,5 r_s',
+      'r_ph = 1,0 r_s',
+      'r_ph = 1,5 r_s',
+      'r_ph = 2,6 r_s'
+    ],
+    correct: 2,
+    explanation: 'Pada metrik Schwarzschild, foton dapat mengorbit dalam lintasan melingkar tidak stabil pada jarak r_ph = 3GM/c² = 1,5 r_s, sedangkan ukuran bayangan tampak (shadow) beradius ~2,6 r_s akibat pembelokan sinar cahaya.'
+  },
+  {
+    q: '3. Mengapa salah satu sisi piringan akresi pada simulasi black hole yang realistis tampak jauh lebih terang daripada sisi lainnya?',
+    options: [
+      'Karena bintang pendamping hanya menyinari bagian kiri piringan akresi.',
+      'Akibat efek Relativistic Doppler Beaming dari plasma yang bergerak mendekati pengamat dengan kecepatan mendekati cahaya.',
+      'Karena medan magnet hanya ada di satu belahan black hole.',
+      'Akibat refleksi cahaya dari atmosfer Bumi saat pengamatan.'
+    ],
+    correct: 1,
+    explanation: 'Plasma pada piringan akresi bergerak dengan kecepatan relativistik (hingga puluhan persen kecepatan cahaya). Sisi yang bergerak menuju pengamat mengalami peningkatan intensitas radiasi dan pergeseran biru (Relativistic Doppler Beaming).'
+  },
+  {
+    q: '4. Bagaimana status ilmiah Radiasi Hawking saat ini dalam astrofisika?',
+    options: [
+      'Telah difoto secara langsung oleh teleskop optik Hubble pada tahun 2020.',
+      'Merupakan prediksi teoretis dari penggabungan relativitas umum dan mekanika kuantum yang belum terdeteksi secara langsung dari black hole astrofisika.',
+      'Telah dibuktikan tidak mungkin terjadi oleh observatorium LIGO.',
+      'Merupakan sinar-X kuat yang dipancarkan oleh jet relativistik quasar.'
+    ],
+    correct: 1,
+    explanation: 'Radiasi Hawking adalah prediksi teoretis fundamental dari Stephen Hawking (1974). Untuk black hole bermassa matahari, suhu Hawking hanya ~60 nanokelvin—jauh lebih dingin daripada radiasi latar gelombang mikro kosmik (2,725 K)—sehingga belum dapat dideteksi secara langsung.'
+  },
+  {
+    q: '5. Instrumen astronomi manakah yang berhasil merekonstruksi citra pertama bayangan black hole supermasif M87* dan Sgr A*?',
+    options: [
+      'Teleskop Luar Angkasa James Webb (JWST) menggunakan kamera inframerah tunggal.',
+      'Event Horizon Telescope (EHT) menggunakan jaringan interferometri radio VLBI skala Bumi pada panjang gelombang 1,3 mm.',
+      'Observatorium LIGO menggunakan detektor gelombang gravitasi laser.',
+      'Teleskop Sinar-X Chandra di orbit rendah Bumi.'
+    ],
+    correct: 1,
+    explanation: 'Event Horizon Telescope (EHT) menggabungkan teleskop radio di berbagai benua melalui teknik Very Long Baseline Interferometry (VLBI) untuk mencapai resolusi sudut seukuran teleskop seukuran planet Bumi.'
+  },
+  {
+    q: '6. Jika massa sebuah black hole digandakan menjadi 2 kali lipat (2M), bagaimana perubahan pada radius Schwarzschild (r_s) dan temperatur Hawking (T_H)?',
+    options: [
+      'r_s menjadi 2 kali lebih besar, sedangkan T_H menjadi setengahnya (0,5 kali).',
+      'Keduanya menjadi 4 kali lebih besar.',
+      'r_s menjadi setengahnya, sedangkan T_H menjadi 2 kali lebih besar.',
+      'Keduanya tidak bergantung pada massa black hole.'
+    ],
+    correct: 0,
+    explanation: 'Karena r_s = 2GM/c² berbanding lurus dengan massa M, maka r_s menjadi 2 kali lipat. Sebaliknya, T_H = ħc³/(8πGMk_B) berbanding terbalik dengan massa M, sehingga suhunya turun menjadi setengahnya.'
+  },
+  {
+    q: '7. Apa syarat utama agar keruntuhan inti bintang masif setelah supernova menghasilkan Black Hole alih-alih Bintang Neutron?',
+    options: [
+      'Bintang harus memiliki planet berbatu di sekelilingnya.',
+      'Sisa inti tidak lagi memiliki konfigurasi bintang neutron stabil menurut persamaan keadaan materi padat yang berlaku.',
+      'Bintang harus berotasi lebih lambat dari Matahari.',
+      'Ledakan supernova harus terjadi di luar galaksi.'
+    ],
+    correct: 1,
+    explanation: 'Jika sisa inti melampaui batas kestabilan bintang neutron untuk persamaan keadaan yang berlaku, keruntuhan lanjutan dapat membentuk black hole. Batas TOV bukan ambang massa awal bintang dan tidak memiliki satu nilai universal.'
+  },
+  {
+    q: '8. Dalam persamaan dilatasi waktu gravitasi Schwarzschild Δt = Δτ / √(1 - r_s/r), apa yang terjadi ketika posisi jam pengamat mendekati event horizon (r → r_s)?',
+    options: [
+      'Waktu pengamat dekat berjalan jauh lebih cepat dibandingkan pengamat jauh.',
+      'Faktor penyebut mendekati nol sehingga interval waktu koordinat Δt pengamat jauh membesar menuju tak hingga relatif terhadap waktu sejati Δτ.',
+      'Dilatasi waktu hilang sepenuhnya pada r = r_s.',
+      'Persamaan tetap berlaku hingga r = 0 tanpa batas.'
+    ],
+    correct: 1,
+    explanation: 'Ketika r mendekati r_s dari luar (r > r_s), penyebut √(1 - r_s/r) mendekati nol. Akibatnya, 1 detik pada jam di dekat horizon (Δτ) tampak berlangsung sangat lama bagi pengamat jauh (Δt → ∞).'
+  },
+  {
+    q: '9. Apa perbedaan utama antara black hole Schwarzschild dan black hole Kerr (seperti model Gargantua)?',
+    options: [
+      'Black hole Kerr tidak memiliki event horizon.',
+      'Black hole Kerr memiliki momentum sudut (rotasi) yang menyeret ruang-waktu di sekitarnya (frame-dragging / ergosphere) dan memperkecil radius ISCO.',
+      'Black hole Schwarzschild hanya ada di pusat galaksi, sedangkan Kerr hanya di laboratorium.',
+      'Black hole Kerr tidak membelokkan cahaya.'
+    ],
+    correct: 1,
+    explanation: 'Black hole Kerr dideskripsikan oleh massa M dan parameter spin berdimensi a* (0 ≤ a* < 1). Rotasinya menyeret kerangka inersia ruang-waktu (frame-dragging), membentuk ergosfer, dan memungkinkan piringan akresi mengorbit jauh lebih dekat ke horizon.'
+  },
+  {
+    q: '10. Mengapa observatorium LIGO–Virgo sangat penting dalam membuktikan keberadaan pasangan black hole bermassa bintang?',
+    options: [
+      'Karena LIGO menangkap foto optik langsung dari permukaan black hole.',
+      'Karena LIGO mendeteksi riak gelombang gravitasi (spacetime ripples) yang dipancarkan saat dua black hole berpilin dan bergabung.',
+      'Karena LIGO mengukur suhu Hawking secara langsung dari galaksi jauh.',
+      'Karena LIGO mengirimkan wahana antariksa ke dalam event horizon.'
+    ],
+    correct: 1,
+    explanation: 'Sejak deteksi pertama GW150914 pada September 2015, interferometri laser LIGO–Virgo mengamati sinyal gelombang gravitasi khas (chirp dan ringdown) dari tabrakan sistem biner black hole yang sebelumnya tak terlihat di spektrum elektromagnetik.'
+  }
+];
+
+// Global Application State
+const state = {
+  activeModule: 'hero',
+  // 3D Black Hole Simulation Controls
+  spin: 0.0,           // Artistic spin control; not a physical Kerr parameter in this shader
+  rayModel: 'schwarzschild', // 'schwarzschild' = null-geodesic ray tracing; 'artistic' = heuristic legacy shader
+  accretion: 1.0,      // Disk luminosity / accretion rate (0.2 to 2.0)
+  doppler: true,       // Relativistic Doppler beaming toggle
+  jets: false,         // Relativistic polar jets toggle
+  showLabels: !(window.matchMedia && window.matchMedia("(max-width: 767px)").matches), // 3D Spatial annotations in Explorer
+  explodedMode: false, // Anatomy structural separation mode
+  sheetOpen: false,    // Mobile bottom-sheet (Explorer / Anatomi)
+  selectedAnatomy: 'event_horizon',
+  // Camera spherical coordinates
+  camTheta: 0.25,
+  camPhi: 1.28,
+  camRadius: 6.4,
+  targetTheta: 0.25,
+  targetPhi: 1.28,
+  targetRadius: 6.4,
+  autoRotate: true,
+  // Physics Lab State
+  physicsTab: 'schwarzschild',
+  kerrSpin: 0.90,          // Dimensionless Kerr spin a* = cJ/(GM^2), used by the analytic calculator
+  bhMassSolar: 10,           // Solar masses for Schwarzschild
+  tdRatio: 1.5,              // r / r_s for Time Dilation
+  lensImpactB: 6.0,          // b / r_s for Gravitational Lensing
+  hawkingMassExp: 0,         // log10(M / M_sun) for Hawking temp
+  // Stellar Evolution State
+  stellarMass: 28,           // Initial stellar mass in M_sun (8 to 50)
+  stellarStage: 0,           // 0: Main Sequence, 1: Red Supergiant, 2: Supernova, 3: Remnant
+  stellarPlaying: true,
+  stellarProgress: 0,
+  // Quiz State
+  quizIndex: 0,
+  quizAnswers: new Array(QUIZ_QUESTIONS.length).fill(null),
+  quizFinished: false,
+  // WebAR State
+  arSupported: false,
+  arSessionActive: false,
+  arScale: 1.0,
+  arRotationY: 0,
+  arSelectedPart: 'event_horizon'
+};
+
+// ============================================================================
+// 2. THREE.JS PHOTOREALISTIC RAYMARCHED BLACK HOLE ENGINE
+// ============================================================================
+
+let renderer, scene, camera, blackHoleMesh, clock;
+let isDragging = false;
+let prevPointer = { x: 0, y: 0 };
+let pinchStartDist = 0;
+let pinchStartRadius = 6.4;
+
+const vertexShader = `
+  varying vec2 vUv;
+  void main() {
+    vUv = uv;
+    gl_Position = vec4(position, 1.0);
+  }
+`;
+
+// Custom GLSL visualization shader.
+// In Schwarzschild mode, the shader integrates the reduced planar null-orbit ODE
+// in the ray's orbital plane (finite angular steps / finite iteration budget).
+// It is not a full 4D spacetime ray tracer, and it does not implement Kerr.
+// Disk emission, color transfer, turbulence and photon-ring glow remain stylized.
+const fragmentShader = `
+  precision highp float;
+
+  varying vec2 vUv;
+  uniform float uTime;
+  uniform vec2 uResolution;
+  uniform vec3 uCamPos;
+  uniform vec3 uCamTarget;
+  uniform float uSpin;
+  uniform float uAccretion;
+  uniform float uDoppler;
+  uniform float uJets;
+  uniform float uExploded;
+  uniform int uRayMode; // 1: Schwarzschild null geodesic; 0: legacy artistic approximation
+  uniform int uHighlightPart; // 0: none, 1: horizon, 2: disk, 3: photon sphere, 4: shadow, 5: singularity
+  uniform float uZoom;
+  uniform vec2 uOff;
+
+  #define PI 3.14159265359
+  #define TAU 6.28318530718
+
+  // Fast 3D hash & value noise for procedural plasma turbulence & deep starfield
+  float hash13(vec3 p3) {
+    p3 = fract(p3 * 0.1031);
+    p3 += dot(p3, p3.zyx + 31.32);
+    return fract((p3.x + p3.y) * p3.z);
+  }
+
+  float noise3D(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return mix(
+      mix(mix(hash13(i + vec3(0,0,0)), hash13(i + vec3(1,0,0)), f.x),
+          mix(hash13(i + vec3(0,1,0)), hash13(i + vec3(1,1,0)), f.x), f.y),
+      mix(mix(hash13(i + vec3(0,0,1)), hash13(i + vec3(1,0,1)), f.x),
+          mix(hash13(i + vec3(0,1,1)), hash13(i + vec3(1,1,1)), f.x), f.y),
+      f.z
+    );
+  }
+
+  float fbm(vec3 p) {
+    float val = 0.0;
+    float amp = 0.52;
+    for (int i = 0; i < 4; i++) {
+      val += amp * noise3D(p);
+      p = p * 2.07 + vec3(0.13, -0.17, 0.21);
+      amp *= 0.48;
+    }
+    return val;
+  }
+
+  // Blackbody-inspired color palette for relativistic plasma (cool deep amber -> incandescent gold -> blue-white Doppler hotspot)
+  vec3 blackbodyPalette(float temp, float dopplerShift) {
+    vec3 cool = vec3(0.45, 0.09, 0.01);
+    vec3 warm = vec3(0.96, 0.42, 0.06);
+    vec3 hot  = vec3(1.00, 0.84, 0.48);
+    vec3 ultra = vec3(0.82, 0.94, 1.00);
+
+    float t = clamp(temp + dopplerShift * 0.28, 0.0, 1.6);
+    vec3 col = mix(cool, warm, smoothstep(0.0, 0.45, t));
+    col = mix(col, hot, smoothstep(0.42, 0.95, t));
+    col = mix(col, ultra, smoothstep(0.92, 1.55, t));
+    return col;
+  }
+
+  // Deep Space Starfield + Faint Galactic Dust Band
+  vec3 sampleCosmos(vec3 dir) {
+    vec3 d = normalize(dir);
+    // Subtle galactic plane band
+    float galPlane = exp(-abs(d.y * 2.8 + d.x * 0.9) * 3.5);
+    float nebula = fbm(d * 3.2 + vec3(1.4));
+    vec3 bg = vec3(0.006, 0.009, 0.018);
+    bg += vec3(0.03, 0.05, 0.09) * galPlane * nebula;
+    bg += vec3(0.06, 0.035, 0.015) * pow(galPlane, 2.0) * (1.0 - nebula);
+
+    // Multi-layer crisp procedural stars
+    vec3 grid1 = floor(d * 260.0);
+    float s1 = hash13(grid1);
+    if (s1 > 0.9965) {
+      vec3 cellCenter = (grid1 + 0.5) / 260.0;
+      float dist = length(d - normalize(cellCenter)) * 260.0;
+      float star = smoothstep(0.45, 0.0, dist) * ((s1 - 0.9965) / 0.0035);
+      vec3 starTint = mix(vec3(0.75, 0.88, 1.0), vec3(1.0, 0.86, 0.68), hash13(grid1 + 7.1));
+      bg += starTint * star * 2.2;
+    }
+
+    vec3 grid2 = floor(d * 140.0);
+    float s2 = hash13(grid2 + 19.3);
+    if (s2 > 0.9978) {
+      vec3 cellCenter2 = (grid2 + 0.5) / 140.0;
+      float dist2 = length(d - normalize(cellCenter2)) * 140.0;
+      float star2 = smoothstep(0.38, 0.0, dist2) * ((s2 - 0.9978) / 0.0022);
+      bg += vec3(0.95, 0.97, 1.0) * star2 * 2.8;
+    }
+    return bg;
+  }
+
+  // Schwarzschild null-geodesic orbit equation in geometric units.
+  // With u = 1/r and M = r_s/2: d²u/dφ² + u = 3 M u².
+  float schwarzschildOrbitAccel(float u) {
+    const float M = 0.5; // r_s = 1 scene unit
+    return 3.0 * M * u * u - u;
+  }
+
+  vec2 integrateSchwarzschildOrbitRK4(float u, float du, float dphi) {
+    float k1u = du;
+    float k1v = schwarzschildOrbitAccel(u);
+    float k2u = du + 0.5 * dphi * k1v;
+    float k2v = schwarzschildOrbitAccel(u + 0.5 * dphi * k1u);
+    float k3u = du + 0.5 * dphi * k2v;
+    float k3v = schwarzschildOrbitAccel(u + 0.5 * dphi * k2u);
+    float k4u = du + dphi * k3v;
+    float k4v = schwarzschildOrbitAccel(u + dphi * k3u);
+    return vec2(
+      u + (dphi / 6.0) * (k1u + 2.0*k2u + 2.0*k3u + k4u),
+      du + (dphi / 6.0) * (k1v + 2.0*k2v + 2.0*k3v + k4v)
+    );
+  }
+
+  void main() {
+    vec2 uv = (gl_FragCoord.xy - 0.5 * uResolution.xy) / uResolution.y;
+    uv = uv * uZoom + uOff; // framing untuk layar portrait / bottom-sheet
+
+    // Camera orthonormal basis
+    vec3 ro = uCamPos;
+    vec3 forward = normalize(uCamTarget - ro);
+    vec3 worldUp = vec3(0.0, 1.0, 0.0);
+    vec3 right = normalize(cross(forward, worldUp));
+    vec3 up = cross(right, forward);
+
+    float fov = 1.15;
+    vec3 rd = normalize(forward * fov + uv.x * right + uv.y * up);
+
+    // Dimensionless artistic scene scale. The following radii are visual controls,
+    // not a self-consistent Kerr solution. In particular, rPhoton and rISCO are
+    // not updated from the Kerr metric when the visual spin control changes.
+    float rs = 1.0;
+    float rISCO = (uRayMode == 1) ? 3.0 : mix(2.65, 1.28, uSpin); // Schwarzschild ISCO = 3 r_s; artistic mode uses a stylized edge
+    float rOuter = 6.8;
+    float rPhoton = 1.5 * rs; // illustrative Schwarzschild reference ring; not Kerr photon region
+
+    // Exploded view vertical offsets for anatomical visualization
+    float diskYOffset = -uExploded * 1.15;
+    float photonYOffset = uExploded * 0.95;
+
+    vec3 pos = ro;
+    vec3 vel = rd;
+    vec3 accumColor = vec3(0.0);
+    float accumAlpha = 0.0;
+    bool captured = false;
+
+    // Angular momentum vector L = r x v for geodesic bending
+    vec3 Lvec = cross(ro, rd);
+    float h2 = dot(Lvec, Lvec);
+
+    // Orbital-plane initial conditions for the Schwarzschild null-orbit ODE.
+    // The camera ray is a local static-observer direction. Convert its angle α to
+    // b = r sin(α)/sqrt(f), then obtain u' from the null-geodesic first integral.
+    vec3 orbitER = normalize(ro);
+    float orbitRadialSpeed = dot(rd, orbitER);
+    vec3 orbitTangent = rd - orbitRadialSpeed * orbitER;
+    float orbitSinAlpha = length(orbitTangent);
+    vec3 orbitET = (orbitSinAlpha > 1e-6) ? normalize(orbitTangent) : vec3(0.0, 0.0, 0.0);
+    float orbitRadius0 = max(length(ro), 1e-5);
+    float orbitU = 1.0 / orbitRadius0;
+    float schwarzschildF0 = max(1.0 - rs / orbitRadius0, 1e-5);
+    // The camera direction is measured in the local static-observer tetrad.
+    // Convert its local angle α to the conserved impact parameter b = r sin(α)/sqrt(f).
+    float orbitB = orbitRadius0 * orbitSinAlpha / sqrt(schwarzschildF0);
+    float orbitRadicand0 = max(1.0 / max(orbitB * orbitB, 1e-12) - orbitU * orbitU * schwarzschildF0, 0.0);
+    float orbitDU = -sign(orbitRadialSpeed) * sqrt(orbitRadicand0);
+    float orbitPhi = 0.0;
+
+    // More angular steps are needed near the critical photon orbit.
+    const int MAX_STEPS = 512;
+    for (int i = 0; i < MAX_STEPS; i++) {
+      float r = length(pos);
+
+      // Event horizon capture check
+      if (r <= rs * 1.001) {
+        captured = true;
+        break;
+      }
+
+      // Escape condition when far from black hole and moving outward
+      if (r > 22.0 && ((uRayMode == 1 && orbitB > 1e-5) ? (orbitDU < 0.0) : dot(pos, vel) > 0.0)) {
+        break;
+      }
+
+      // Adaptive step size: fine steps near photon sphere & disk plane
+      float distToDiskPlane = abs(pos.y - diskYOffset);
+      float dt = clamp(min(r * 0.085, distToDiskPlane * 0.55 + 0.045), 0.032, 0.48);
+
+      vec3 nextVel;
+      vec3 nextPos;
+      if (uRayMode == 1 && orbitB > 1e-5) {
+        // Physical Schwarzschild spatial path: RK4 integration of the null-geodesic
+        // orbit equation in its orbital plane. This computes the light path, while
+        // disk emissivity/colour remain deliberately illustrative.
+        const float dphi = 0.02;
+        vec2 orbitNext = integrateSchwarzschildOrbitRK4(orbitU, orbitDU, dphi);
+        orbitU = orbitNext.x;
+        orbitDU = orbitNext.y;
+        orbitPhi += dphi;
+        if (orbitU <= 0.0) {
+          nextPos = pos + vel * dt;
+          nextVel = vel;
+        } else {
+          vec3 eRad = cos(orbitPhi) * orbitER + sin(orbitPhi) * orbitET;
+          vec3 eTan = -sin(orbitPhi) * orbitER + cos(orbitPhi) * orbitET;
+          nextPos = eRad / max(orbitU, 1e-5);
+          nextVel = normalize((-orbitDU) * eRad + (orbitU) * eTan);
+          dt = max(length(nextPos - pos), 0.001);
+        }
+      } else if (uRayMode == 1) {
+        // Radial null rays have zero angular momentum and remain radial in Schwarzschild.
+        nextVel = rd;
+        nextPos = pos + nextVel * dt;
+      } else {
+        // Legacy visual-only approximation, retained as an artistic presentation mode.
+        float r2 = r * r;
+        float r5 = r2 * r2 * r;
+        vec3 accel = -1.5 * h2 * pos / max(r5, 0.0001);
+        if (uSpin > 0.01) {
+          vec3 spinAxis = vec3(0.0, 1.0, 0.0);
+          vec3 visualSwirl = cross(spinAxis, pos) * (0.38 * uSpin / max(r2 * r, 0.05));
+          accel += visualSwirl;
+        }
+        nextVel = normalize(vel + accel * dt);
+        nextPos = pos + nextVel * dt;
+      }
+
+      // Photon-sphere radius marker/glow for anatomy; not a separately traced photon orbit image
+      float distPhoton = abs(length(pos - vec3(0.0, photonYOffset, 0.0)) - rPhoton);
+      if (distPhoton < 0.055) {
+        float pGlow = (1.0 - distPhoton / 0.055) * 0.028 * uAccretion;
+        vec3 pCol = (uHighlightPart == 3) ? vec3(0.22, 0.74, 0.97) : vec3(1.0, 0.78, 0.42);
+        accumColor += pCol * pGlow * (1.0 - accumAlpha);
+      }
+
+      // Check Accretion Disk crossing or volumetric slab intersection
+      float y0 = pos.y - diskYOffset;
+      float y1 = nextPos.y - diskYOffset;
+      float diskHalfThick = 0.075 * smoothstep(rISCO * 0.9, rOuter, r) + 0.015;
+
+      if ((y0 * y1 <= 0.0) || (abs(y0) < diskHalfThick)) {
+        // Interpolate exact crossing point
+        float tCross = (y0 * y1 <= 0.0) ? clamp(abs(y0) / max(abs(y0 - y1), 0.0001), 0.0, 1.0) : 0.5;
+        vec3 hitPos = mix(pos, nextPos, tCross);
+        float rDisk = length(hitPos.xz);
+
+        if (rDisk >= rISCO && rDisk <= rOuter) {
+          float radialNorm = (rDisk - rISCO) / (rOuter - rISCO);
+          float angle = atan(hitPos.z, hitPos.x);
+
+          // Differential Keplerian angular velocity: omega ~ r^(-1.5)
+          float keplerSpeed = 2.6 / pow(max(rDisk, 0.8), 1.35);
+          float spiralPhase = angle + keplerSpeed * uTime + log(rDisk) * 4.2;
+
+          // Multi-scale spiral filament turbulence
+          vec3 sampleCoord = vec3(
+            cos(spiralPhase) * rDisk * 0.9,
+            sin(spiralPhase) * rDisk * 0.9,
+            rDisk * 1.8 - uTime * 0.35
+          );
+          float turb1 = fbm(sampleCoord * 1.4);
+          float turb2 = noise3D(vec3(angle * 6.0 + uTime * 1.4, rDisk * 5.5, uTime * 0.2));
+          float rings = 0.65 + 0.35 * sin(rDisk * 14.0 + turb1 * 4.5);
+
+          float density = rings * mix(0.45, 1.35, turb1) * mix(0.75, 1.25, turb2);
+          // Smooth inner & outer radial envelope
+          float innerFade = smoothstep(rISCO, rISCO + 0.28, rDisk);
+          float outerFade = pow(1.0 - radialNorm, 1.65);
+          density *= innerFade * outerFade;
+
+          // Relativistic orbital tangent direction (counter-clockwise around +Y)
+          vec3 tangent = normalize(vec3(-hitPos.z, 0.0, hitPos.x));
+          // Beta = v/c increases near ISCO
+          float beta = clamp(sqrt(0.55 / max(rDisk, 0.85)) * (0.65 + 0.35 * uSpin), 0.05, 0.68);
+          float cosTheta = dot(tangent, -rd); // Positive when plasma moves toward camera
+
+          // Relativistic Doppler Factor D = 1 / (gamma * (1 - beta * cosTheta))
+          float gamma = 1.0 / sqrt(1.0 - beta * beta);
+          float dopplerFactor = 1.0 / (gamma * (1.0 - beta * cosTheta));
+          // Relativistic beaming intensity scales ~ D^3.2 (clamped for visual legibility)
+          float beaming = mix(1.0, clamp(pow(dopplerFactor, 2.7), 0.22, 3.4), uDoppler);
+          float dopplerShift = mix(0.0, (dopplerFactor - 1.0) * 1.15, uDoppler);
+
+          // Temperature profile: hottest near ISCO
+          float baseTemp = mix(1.18, 0.12, pow(radialNorm, 0.62)) * (0.75 + 0.35 * uAccretion);
+          vec3 plasmaCol = blackbodyPalette(baseTemp * density * 1.15, dopplerShift);
+
+          // Highlight Accretion Disk if selected in Anatomy mode
+          if (uHighlightPart == 2) {
+            plasmaCol = mix(plasmaCol, vec3(0.98, 0.72, 0.18), 0.28);
+          }
+
+          float stepAlpha = clamp(density * 0.42 * uAccretion, 0.0, 0.88);
+          vec3 emission = plasmaCol * beaming * stepAlpha * (1.35 * uAccretion);
+
+          accumColor += emission * (1.0 - accumAlpha);
+          accumAlpha += stepAlpha * (1.0 - accumAlpha);
+
+          if (accumAlpha > 0.96) break;
+        }
+      }
+
+      // Optional Relativistic Polar Jets (Blandford-Znajek mechanism)
+      if (uJets > 0.01 && uSpin > 0.15) {
+        float cylR = length(pos.xz);
+        float absY = abs(pos.y);
+        float jetRadius = 0.14 + pow(absY, 0.72) * 0.16;
+        if (absY > 1.05 && cylR < jetRadius) {
+          float jetCore = exp(-pow(cylR / (jetRadius * 0.52), 2.0));
+          float jetFade = exp(-absY * 0.16) * smoothstep(1.05, 1.8, absY);
+          float jetWave = 0.7 + 0.3 * sin(absY * 3.5 - uTime * 6.0 + noise3D(pos * 2.0) * 3.0);
+          vec3 jetCol = vec3(0.28, 0.72, 1.0) * jetCore * jetFade * jetWave * 0.065 * uSpin * uJets;
+          accumColor += jetCol * (1.0 - accumAlpha);
+        }
+      }
+
+      pos = nextPos;
+      vel = nextVel;
+    }
+
+    // Background lensed stars if ray escaped capture
+    if (!captured) {
+      vec3 bg = sampleCosmos(vel);
+      accumColor += bg * (1.0 - accumAlpha);
+    } else {
+      // Event Horizon / Singularity subtle anatomical highlights when selected
+      if (uHighlightPart == 1) {
+        accumColor += vec3(0.06, 0.24, 0.38) * (1.0 - accumAlpha);
+      } else if (uHighlightPart == 5) {
+        float centerDist = length(uv);
+        float singGlow = exp(-centerDist * 26.0) * 1.4;
+        accumColor += vec3(0.35, 0.85, 1.0) * singGlow;
+      }
+    }
+
+    // Shadow boundary highlight when selected in Anatomy mode
+    if (uHighlightPart == 4) {
+      float bApprox = length(cross(ro, rd));
+      float shadowEdge = exp(-pow((bApprox - 2.598) * 9.0, 2.0));
+      accumColor += vec3(0.96, 0.62, 0.05) * shadowEdge * 0.55;
+    }
+
+    // ACES Filmic Tone Mapping & Subtle Bloom Lift
+    vec3 x = accumColor;
+    vec3 mapped = (x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14);
+    mapped = pow(clamp(mapped, 0.0, 1.0), vec3(0.92));
+
+    gl_FragColor = vec4(mapped, 1.0);
+  }
+`;
+
+const mqMobile = window.matchMedia('(max-width: 767px)');
+let viewZoomCur = 1.0;
+let viewOffY = 0.0;
+function isMobile() { return mqMobile.matches; }
+function getRenderDPR() {
+  const d = window.devicePixelRatio || 1;
+  if (isMobile()) return Math.min(d, state.rayModel === 'schwarzschild' ? 0.75 : 1.0);
+  return Math.min(d, state.rayModel === 'schwarzschild' ? 1.15 : 1.75);
+}
+function viewZoomFactor() {
+  const a = window.innerWidth / window.innerHeight;
+  return a < 1 ? Math.min(3.0, 1.1 / a) : 1.0;
+}
+function radiusScale() {
+  return (window.innerWidth / window.innerHeight) < 0.9 ? 1.35 : 1.0;
+}
+function targetShiftY() {
+  if (!isMobile()) return 0;
+  const m = state.activeModule;
+  if (m === 'explorer' || m === 'anatomy') return state.sheetOpen ? 0.2 : 0.05;
+  return 0;
+}
+function toggleFocusMode() { document.body.classList.toggle('focus-mode'); }
+function toggleSheet() {
+  state.sheetOpen = !state.sheetOpen;
+  const b = document.getElementById('sheet-body');
+  if (b) b.classList.toggle('hidden', !state.sheetOpen);
+  const t = document.getElementById('sheet-toggle');
+  if (t) t.textContent = state.sheetOpen ? 'Tutup ▾' : (state.activeModule === 'anatomy' ? 'Detail ▴' : 'Kontrol ▴');
+}
+
+function initBlackHoleEngine() {
+  const canvas = document.getElementById('cosmos-canvas');
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: false, powerPreference: 'high-performance' });
+  renderer.setPixelRatio(getRenderDPR());
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
+  scene = new THREE.Scene();
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  clock = new THREE.Clock();
+
+  const geometry = new THREE.PlaneGeometry(2, 2);
+  const material = new THREE.ShaderMaterial({
+    vertexShader,
+    fragmentShader,
+    uniforms: {
+      uTime: { value: 0 },
+      uResolution: { value: new THREE.Vector2(window.innerWidth * renderer.getPixelRatio(), window.innerHeight * renderer.getPixelRatio()) },
+      uCamPos: { value: new THREE.Vector3(0, 1.8, 6.2) },
+      uCamTarget: { value: new THREE.Vector3(0, 0, 0) },
+      uSpin: { value: state.spin },
+      uAccretion: { value: state.accretion },
+      uDoppler: { value: state.doppler ? 1.0 : 0.0 },
+      uJets: { value: state.jets ? 1.0 : 0.0 },
+      uExploded: { value: 0.0 },
+      uRayMode: { value: state.rayModel === 'schwarzschild' ? 1 : 0 },
+      uHighlightPart: { value: 0 },
+      uZoom: { value: 1.0 },
+      uOff: { value: new THREE.Vector2(0, 0) }
+    }
+  });
+
+  blackHoleMesh = new THREE.Mesh(geometry, material);
+  scene.add(blackHoleMesh);
+
+  window.addEventListener('resize', onWindowResize);
+  setupCanvasInteractions(canvas);
+}
+
+function onWindowResize() {
+  if (!renderer || !blackHoleMesh) return;
+  const dpr = getRenderDPR();
+  renderer.setPixelRatio(dpr);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  blackHoleMesh.material.uniforms.uResolution.value.set(
+    window.innerWidth * dpr,
+    window.innerHeight * dpr
+  );
+}
+
+function setupCanvasInteractions(canvas) {
+  canvas.addEventListener('pointerdown', (e) => {
+    isDragging = true;
+    state.autoRotate = false;
+    prevPointer = { x: e.clientX, y: e.clientY };
+  });
+
+  window.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+    const dx = e.clientX - prevPointer.x;
+    const dy = e.clientY - prevPointer.y;
+    prevPointer = { x: e.clientX, y: e.clientY };
+
+    state.targetTheta -= dx * 0.0065;
+    state.targetPhi = Math.max(0.18, Math.min(Math.PI - 0.18, state.targetPhi - dy * 0.0065));
+  });
+
+  window.addEventListener('pointerup', () => {
+    isDragging = false;
+  });
+
+  canvas.addEventListener('wheel', (e) => {
+    if (state.activeModule === 'explorer' || state.activeModule === 'anatomy' || state.activeModule === 'hero') {
+      state.targetRadius = Math.max(3.2, Math.min(18, state.targetRadius + e.deltaY * 0.005));
+    }
+  }, { passive: true });
+
+  // Pinch-to-zoom on touch screens
+  canvas.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      pinchStartDist = Math.hypot(dx, dy);
+      pinchStartRadius = state.targetRadius;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2 && pinchStartDist > 0) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.hypot(dx, dy);
+      const scale = pinchStartDist / Math.max(dist, 1);
+      state.targetRadius = Math.max(3.2, Math.min(18, pinchStartRadius * scale));
+    }
+  }, { passive: true });
+}
+
+// Project 3D world point onto 2D screen coordinates for Spatial Annotation Pins
+function project3DToScreen(worldVec, camPos, camTarget) {
+  const forward = new THREE.Vector3().subVectors(camTarget, camPos).normalize();
+  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+  const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+
+  const rel = new THREE.Vector3().subVectors(worldVec, camPos);
+  const z = rel.dot(forward);
+  if (z <= 0.1) return null;
+
+  const fov = 1.15;
+  const x = ((rel.dot(right) / z) * fov) / viewZoomCur;
+  const y = (((rel.dot(up) / z) * fov) - viewOffY) / viewZoomCur;
+
+  const screenX = x * window.innerHeight + 0.5 * window.innerWidth;
+  const screenY = -y * window.innerHeight + 0.5 * window.innerHeight;
+  return { x: screenX, y: screenY, visible: screenX > 40 && screenX < window.innerWidth - 40 && screenY > 110 && screenY < window.innerHeight - 40 };
+}
+
+function updateSpatialAnnotations(camPos, camTarget) {
+  const layer = document.getElementById('annotation-layer');
+  if (!layer) return;
+
+  const shouldShow = !isMobile() && ((state.activeModule === 'explorer' && state.showLabels) || state.activeModule === 'anatomy');
+  if (!shouldShow) {
+    layer.classList.add('hidden');
+    return;
+  }
+  layer.classList.remove('hidden');
+
+  const exp = blackHoleMesh.material.uniforms.uExploded.value;
+  const pins = [
+    { id: 'singularity', title: 'Singularitas', sub: 'r → 0', pos: new THREE.Vector3(0, -exp * 0.25, 0), color: 'sky' },
+    { id: 'event_horizon', title: 'Event Horizon', sub: 'rₛ = 2GM/c²', pos: new THREE.Vector3(0.72, 0.35, 0.65), color: 'amber' },
+    { id: 'photon_sphere', title: 'Photon Sphere', sub: '1.5 rₛ', pos: new THREE.Vector3(-1.35, 0.55 + exp * 0.95, 0.55), color: 'sky' },
+    { id: 'shadow', title: 'Black Hole Shadow', sub: '~2.6 rₛ', pos: new THREE.Vector3(-2.35, -0.35, 0.95), color: 'amber' },
+    { id: 'accretion_disk', title: 'Accretion Disk', sub: 'Plasma Relativistik', pos: new THREE.Vector3(3.4, -exp * 1.15, 1.2), color: 'orange' }
+  ];
+
+  let html = '';
+  pins.forEach(p => {
+    const proj = project3DToScreen(p.pos, camPos, camTarget);
+    if (!proj || !proj.visible) return;
+    const isSelected = state.activeModule === 'anatomy' && state.selectedAnatomy === p.id;
+    const borderCol = isSelected ? 'border-amber-400 bg-amber-500/25 shadow-[0_0_20px_rgba(245,158,11,0.5)]' : 'border-white/20 bg-slate-950/80 hover:border-amber-400/70';
+    const dotCol = p.color === 'sky' ? 'bg-sky-400' : 'bg-amber-400';
+    html += `
+      <button onclick="onPinClick('${p.id}')" style="left:${proj.x.toFixed(1)}px; top:${proj.y.toFixed(1)}px;"
+        class="annotation-pin px-2.5 py-1.5 rounded-xl backdrop-blur-md border ${borderCol} flex items-center gap-2 text-left transition">
+        <span class="w-2 h-2 rounded-full ${dotCol} animate-ping absolute opacity-60"></span>
+        <span class="w-2 h-2 rounded-full ${dotCol} relative"></span>
+        <div>
+          <div class="text-[11px] font-display font-semibold text-white leading-tight">${p.title}</div>
+          <div class="text-[9px] font-mono text-amber-300/90 leading-tight">${p.sub}</div>
+        </div>
+      </button>
+    `;
+  });
+  layer.innerHTML = html;
+}
+
+function animate() {
+  requestAnimationFrame(animate);
+  const elapsed = clock.getElapsedTime();
+
+  // Gentle auto-orbit on Hero or when enabled
+  if (state.autoRotate && !isDragging) {
+    state.targetTheta += 0.0022;
+  }
+
+  // Smooth camera interpolation
+  state.camTheta += (state.targetTheta - state.camTheta) * 0.075;
+  state.camPhi += (state.targetPhi - state.camPhi) * 0.075;
+  state.camRadius += (state.targetRadius - state.camRadius) * 0.075;
+
+  // Offset framing slightly when content panels sit on the left/right
+  let targetY = 0.0;
+  if (state.activeModule === 'anatomy' && state.explodedMode) {
+    targetY = 0.0;
+  }
+
+  const camX = state.camRadius * Math.sin(state.camPhi) * Math.sin(state.camTheta);
+  const camY = state.camRadius * Math.cos(state.camPhi);
+  const camZ = state.camRadius * Math.sin(state.camPhi) * Math.cos(state.camTheta);
+
+  const camPos = new THREE.Vector3(camX, camY, camZ);
+  const camTarget = new THREE.Vector3(0, targetY, 0);
+
+  if (blackHoleMesh) {
+    const u = blackHoleMesh.material.uniforms;
+    u.uTime.value = elapsed;
+    u.uCamPos.value.copy(camPos);
+    u.uCamTarget.value.copy(camTarget);
+    u.uSpin.value += (state.spin - u.uSpin.value) * 0.1;
+    u.uAccretion.value += (state.accretion - u.uAccretion.value) * 0.1;
+    u.uDoppler.value += ((state.doppler ? 1.0 : 0.0) - u.uDoppler.value) * 0.1;
+    u.uJets.value += ((state.jets ? 1.0 : 0.0) - u.uJets.value) * 0.1;
+    u.uRayMode.value = state.rayModel === 'schwarzschild' ? 1 : 0;
+    viewZoomCur = viewZoomFactor();
+    viewOffY += (-targetShiftY() * viewZoomCur - viewOffY) * 0.1;
+    u.uZoom.value = viewZoomCur;
+    u.uOff.value.set(0, viewOffY);
+
+    const targetExploded = (state.activeModule === 'anatomy' && state.explodedMode) ? 1.0 : 0.0;
+    u.uExploded.value += (targetExploded - u.uExploded.value) * 0.08;
+
+    const partMap = { none: 0, event_horizon: 1, accretion_disk: 2, photon_sphere: 3, shadow: 4, singularity: 5 };
+    u.uHighlightPart.value = (state.activeModule === 'anatomy') ? (partMap[state.selectedAnatomy] || 0) : 0;
+  }
+
+  updateSpatialAnnotations(camPos, camTarget);
+  renderer.render(scene, camera);
+}
+
+// ============================================================================
+// 3. NAVIGATION & UI RENDERING
+// ============================================================================
+
+function renderNavigation() {
+  const nav = document.getElementById('main-nav');
+  nav.innerHTML = MODULES.map(m => {
+    const active = state.activeModule === m.id;
+    return `
+      <button onclick="navigateTo('${m.id}')" ${active ? 'data-active="true"' : ''}
+        class="px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-xl text-xs font-medium whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
+          active
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-slate-950 font-bold shadow-[0_0_20px_rgba(245,158,11,0.45)]'
+            : 'text-slate-300 hover:text-white hover:bg-white/[0.07]'
+        }">
+        <span class="sm:hidden">${m.short}</span><span class="hidden sm:inline">${m.label}</span>
+      </button>
+    `;
+  }).join('');
+  const act = nav.querySelector('[data-active="true"]');
+  if (act) nav.scrollTo({ left: act.offsetLeft - nav.clientWidth / 2 + act.clientWidth / 2, behavior: 'smooth' });
+}
+
+function navigateTo(moduleId) {
+  if (moduleId !== state.activeModule) state.sheetOpen = false;
+  state.activeModule = moduleId;
+  renderNavigation();
+
+  // Adjust camera framing smoothly per module
+  if (moduleId === 'hero') {
+    state.targetTheta = 0.25;
+    state.targetPhi = 1.28;
+    state.targetRadius = 6.2;
+    state.autoRotate = true;
+  } else if (moduleId === 'explorer') {
+    state.targetRadius = 6.4;
+    state.autoRotate = false;
+  } else if (moduleId === 'anatomy') {
+    state.targetTheta = 0.38;
+    state.targetPhi = 1.24;
+    state.targetRadius = 6.8;
+    state.autoRotate = false;
+  } else if (moduleId === 'interstellar') {
+    state.rayModel = 'artistic';
+    state.spin = 0.998;
+    state.doppler = true;
+    state.targetTheta = 0.15;
+    state.targetPhi = 1.44;
+    state.targetRadius = 6.0;
+  }
+
+  if (['hero', 'explorer', 'anatomy', 'interstellar'].includes(moduleId)) state.targetRadius *= radiusScale();
+
+  const container = document.getElementById('app-container');
+  switch (moduleId) {
+    case 'hero': container.innerHTML = renderHeroView(); break;
+    case 'intro': container.innerHTML = renderIntroView(); break;
+    case 'explorer': container.innerHTML = renderExplorerView(); break;
+    case 'anatomy': container.innerHTML = renderAnatomyView(); break;
+    case 'ar': container.innerHTML = renderARView(); initARCanvasFallback(); break;
+    case 'physics': container.innerHTML = renderPhysicsView(); updatePhysicsCalculations(); break;
+    case 'stellar': container.innerHTML = renderStellarView(); initStellarCanvas(); break;
+    case 'interstellar': container.innerHTML = renderInterstellarView(); break;
+    case 'quiz': container.innerHTML = renderQuizView(); break;
+  }
+
+  renderMath();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderMath() {
+  if (window.renderMathInElement) {
+    renderMathInElement(document.getElementById('app-container'), {
+      delimiters: [
+        { left: '$$', right: '$$', display: true },
+        { left: '$', right: '$', display: false }
+      ],
+      throwOnError: false
+    });
+  }
+}
+
+function showToast(msg) {
+  const box = document.getElementById('toast-box');
+  const content = document.getElementById('toast-content');
+  content.textContent = msg;
+  box.classList.remove('opacity-0', 'translate-y-3');
+  setTimeout(() => {
+    box.classList.add('opacity-0', 'translate-y-3');
+  }, 3200);
+}
+
+function toggleEpistemicModal() {
+  const modal = document.getElementById('epistemic-modal');
+  if (modal.classList.contains('hidden')) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+  } else {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }
+}
+
+function onPinClick(partId) {
+  if (state.activeModule === 'anatomy') {
+    selectAnatomyPart(partId);
+  } else {
+    const part = ANATOMY_PARTS.find(p => p.id === partId);
+    if (part) {
+      showToast(`${part.name}: ${part.summary}`);
+    }
+  }
+}
+
+// ============================================================================
+// MODULE A: HALAMAN PEMBUKA (HERO / PORTAL)
+// ============================================================================
+function renderHeroView() {
+  return `
+    <section class="module-section flex-1 flex flex-col justify-between min-h-[calc(100dvh-8rem)] sm:min-h-[76vh] pointer-events-none">
+      <!-- Top Telemetry Pill -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+        <div class="hud-panel px-3.5 py-2 rounded-full inline-flex items-center gap-2.5 text-xs font-mono text-slate-300">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+          <span>VISUALISASI 3D INTERAKTIF • MODEL KONSEPTUAL</span>
+        </div>
+        <div class="hud-panel px-3.5 py-1.5 rounded-full text-[11px] font-mono text-sky-300 hidden md:flex items-center gap-2">
+          <span>Geser layar untuk memutar sudut pandang • Gulir untuk memperbesar</span>
+        </div>
+      </div>
+
+      <!-- Center-Left Dramatic Title & Scientific Portal -->
+      <div class="sm:my-auto pt-2 sm:py-8 max-w-2xl pointer-events-auto">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/15 border border-amber-500/35 text-amber-300 font-mono text-xs mb-4">
+          <span>EKSPEDISI ASTROFISIKA INTERAKTIF</span>
+        </div>
+        <h1 class="font-display text-3xl sm:text-6xl lg:text-7xl font-bold tracking-tight text-white leading-[1.04] mb-4 glow-text-amber">
+          BLACK HOLE:<br/>
+          <span class="bg-gradient-to-r from-amber-200 via-amber-400 to-orange-500 bg-clip-text text-transparent">
+            BEYOND THE EVENT HORIZON
+          </span>
+        </h1>
+        <p class="hidden sm:block text-slate-300 text-sm sm:text-base lg:text-lg leading-relaxed mb-7 max-w-xl font-light">
+          Jelajahi batas paling ekstrem dalam fisika modern. Amati bagaimana gravitasi membelokkan lintasan cahaya, memperlambat laju waktu, dan membentuk struktur kosmik paling misterius di alam semesta melalui visualisasi 3D interaktif, WebAR, dan laboratorium relativitas.
+        </p>
+
+        <div class="flex flex-wrap items-center gap-3.5">
+          <button onclick="navigateTo('explorer')"
+            class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-display font-bold text-sm sm:text-base shadow-[0_0_32px_rgba(245,158,11,0.5)] flex items-center gap-2.5 transition transform hover:-translate-y-0.5">
+            <span>Mulai Eksplorasi 3D</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M13 7l5 5m0 0l-5 5m5-5H6"/></svg>
+          </button>
+
+          <button onclick="navigateTo('intro')"
+            class="px-5 py-3.5 rounded-2xl hud-panel hover:bg-white/10 text-white font-medium text-sm sm:text-base flex items-center gap-2 transition">
+            <span>Pelajari Konsep Dasar</span>
+          </button>
+
+          <button onclick="navigateTo('ar')"
+            class="px-5 py-3.5 rounded-2xl hud-panel border-sky-500/35 hover:border-sky-400/70 text-sky-300 font-medium text-sm sm:text-base flex items-center gap-2 transition">
+            <span>Mode WebAR</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="flex-1 min-h-[16vh] sm:hidden"></div>
+      <!-- Bottom Quick Access Cards & Epistemic Note -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 pointer-events-auto">
+        <button onclick="navigateTo('anatomy')" class="hud-panel hover:border-amber-500/40 rounded-2xl p-4 text-left transition group">
+          <div class="text-[11px] font-mono text-amber-400 mb-1">01 • STRUKTUR SPASIAL</div>
+          <div class="font-display font-semibold text-white group-hover:text-amber-300 transition">Anatomi Black Hole</div>
+          <p class="hidden sm:block text-xs text-slate-400 mt-1">Bedah 5 lapisan struktur dari Singularitas hingga Accretion Disk.</p>
+        </button>
+
+        <button onclick="navigateTo('physics')" class="hud-panel hover:border-sky-500/40 rounded-2xl p-4 text-left transition group">
+          <div class="text-[11px] font-mono text-sky-400 mb-1">02 • SIMULASI PERSAMAAN</div>
+          <div class="font-display font-semibold text-white group-hover:text-sky-300 transition">Laboratorium Fisika</div>
+          <p class="hidden sm:block text-xs text-slate-400 mt-1">Uji Radius Schwarzschild, Dilatasi Waktu, Lensing &amp; Suhu Hawking.</p>
+        </button>
+
+        <button onclick="navigateTo('stellar')" class="hud-panel hover:border-orange-500/40 rounded-2xl p-4 text-left transition group">
+          <div class="text-[11px] font-mono text-orange-400 mb-1">03 • ASTROFISIKA BINTANG</div>
+          <div class="font-display font-semibold text-white group-hover:text-orange-300 transition">Evolusi Bintang Masif</div>
+          <p class="hidden sm:block text-xs text-slate-400 mt-1">Simulasi supernova dan penentuan batas massa Bintang Neutron vs Black Hole.</p>
+        </button>
+
+        <button onclick="navigateTo('quiz')" class="hud-panel hover:border-emerald-500/40 rounded-2xl p-4 text-left transition group">
+          <div class="text-[11px] font-mono text-emerald-400 mb-1">04 • EVALUASI PEMAHAMAN</div>
+          <div class="font-display font-semibold text-white group-hover:text-emerald-300 transition">Knowledge Challenge</div>
+          <p class="hidden sm:block text-xs text-slate-400 mt-1">10 soal tantangan ilmiah dengan umpan balik langsung dan pembahasan.</p>
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+// ============================================================================
+// MODULE B: PENGENALAN BLACK HOLE
+// ============================================================================
+function renderIntroView() {
+  return `
+    <section class="module-section pointer-events-auto space-y-6">
+      <!-- Header Card -->
+      <div class="hud-panel rounded-3xl p-6 sm:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+          <span class="px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 font-mono text-xs">
+            MODUL 02 • LANDASAN KONSEPTUAL &amp; BUKTI OBSERVASI
+          </span>
+          <span class="text-xs font-mono text-emerald-400">● Referensi: NASA, Event Horizon Telescope (EHT), LIGO</span>
+        </div>
+        <h2 class="font-display text-2xl sm:text-4xl font-bold text-white mb-3">Mengenal Black Hole Secara Ilmiah</h2>
+        <p class="text-slate-300 text-sm sm:text-base max-w-4xl leading-relaxed">
+          Dalam teori <strong>Relativitas Umum</strong> yang dirumuskan Albert Einstein (1915), gravitasi bukanlah gaya tarik-menarik misterius pada ruang datar, melainkan manifestasi dari <strong>kelengkungan ruang-waktu (spacetime curvature)</strong> akibat keberadaan massa dan energi. Black hole adalah wilayah ruang-waktu tempat kelengkungan tersebut mencapai titik ekstrem.
+        </p>
+      </div>
+
+      <!-- 4 Core Conceptual Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <!-- 1. Apa itu Black Hole -->
+        <div class="hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-9 h-9 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center font-mono font-bold text-amber-400">01</span>
+              <span class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Relativitas Umum</span>
+            </div>
+            <h3 class="font-display text-xl font-bold text-white mb-2.5">Apa Itu Black Hole?</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-3">
+              Black hole (lubang hitam) adalah objek astrofisika sangat padat dengan medan gravitasi sedemikian kuat sehingga tidak ada partikel materi maupun gelombang elektromagnetik—termasuk cahaya—yang dapat lolos dari bagian dalamnya setelah melewati batas kritis bernama <strong>Event Horizon</strong>.
+            </p>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Meskipun namanya "lubang", black hole bukanlah ruang kosong, melainkan konsentrasi massa luar biasa besar dalam volume ruang yang sangat kecil (seperti memampatkan seluruh massa Matahari ke dalam bola berdiameter ~6 km).
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs font-mono text-amber-300">
+            <span>Klasifikasi Massa:</span>
+            <span>Stellar (5–100 M☉) • Supermasif (10⁶–10¹⁰ M☉)</span>
+          </div>
+        </div>
+
+        <!-- 2. Bagaimana Black Hole Terbentuk -->
+        <div class="hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-9 h-9 rounded-xl bg-orange-500/15 border border-orange-500/30 flex items-center justify-center font-mono font-bold text-orange-400">02</span>
+              <span class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Teramati (LIGO / Supernova)</span>
+            </div>
+            <h3 class="font-display text-xl font-bold text-white mb-2.5">Bagaimana Black Hole Terbentuk?</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-3">
+              Black hole bermassa bintang dapat terbentuk ketika inti bintang masif mengalami keruntuhan gravitasi. Tidak ada satu ambang massa awal yang berlaku universal: massa inti saat runtuh dipengaruhi kehilangan massa, metalisitas, rotasi, dan interaksi biner. Keruntuhan inti dapat menghasilkan supernova, tetapi pada sebagian kasus dapat terjadi keruntuhan langsung atau supernova yang lemah.
+            </p>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Jika massa sisa inti neutron melampaui massa maksimum yang diizinkan oleh persamaan keadaan materi padat (batas TOV untuk bintang neutron ideal yang statis dan sferis), dukungan tekanan tidak lagi mampu menghasilkan konfigurasi kesetimbangan. Keruntuhan lanjutan dapat membentuk black hole. Nilai batas TOV tidak universal; nilainya bergantung pada persamaan keadaan materi neutron, rotasi, dan asumsi model. Pembentukan black hole juga tidak selalu harus didahului supernova terang. Black hole supermasif dapat tumbuh melalui akresi dan penggabungan.
+            </p>
+          </div>
+          <div class="mt-4 pt-3 border-t border-white/10">
+            <button onclick="navigateTo('stellar')" class="text-xs font-semibold text-orange-300 hover:text-orange-200 flex items-center gap-1.5">
+              <span>Simulasikan Evolusi Bintang Masif →</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- 3. Mengapa Cahaya Tidak Dapat Keluar -->
+        <div class="hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-9 h-9 rounded-xl bg-sky-500/15 border border-sky-500/30 flex items-center justify-center font-mono font-bold text-sky-400">03</span>
+              <span class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-sky-500/15 text-sky-300 border border-sky-500/30">Geometri Ruang-Waktu</span>
+            </div>
+            <h3 class="font-display text-xl font-bold text-white mb-2.5">Mengapa Cahaya Tidak Dapat Keluar dari Event Horizon?</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-3">
+              Analogi kecepatan lepas Newtonian sering digunakan untuk memperkenalkan radius Schwarzschild, tetapi bukan penjelasan relativistik yang fundamental. Dalam relativitas umum, event horizon adalah batas kausal pada geometri ruang-waktu; di dalamnya, seluruh lintasan kausal masa depan mengarah ke wilayah dengan radius lebih kecil:
+            </p>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              Di dalam Event Horizon, kelengkungan ruang-waktu memiringkan <strong>kerucut cahaya (light cone)</strong> sepenuhnya ke arah dalam. Artinya, arah menuju pusat black hole menjadi masa depan kausal yang tak terelakkan—keluar dari horizon sama mustahilnya dengan berjalan mundur ke masa lalu.
+            </p>
+          </div>
+          <!-- Mini SVG Light Cone Bending Diagram -->
+          <div class="mt-4 p-3 rounded-2xl bg-black/40 border border-white/10">
+            <svg viewBox="0 0 360 88" class="w-full h-20">
+              <line x1="180" y1="6" x2="180" y2="82" stroke="#F59E0B" stroke-width="1.5" stroke-dasharray="4 3"/>
+              <text x="186" y="16" fill="#FBBF24" font-size="9" font-family="JetBrains Mono">Event Horizon (r = rₛ)</text>
+              <text x="24" y="16" fill="#94A3B8" font-size="9" font-family="Inter">Luar Horizon (r &gt; rₛ)</text>
+              <text x="235" y="78" fill="#38BDF8" font-size="9" font-family="Inter">Dalam Horizon (r &lt; rₛ)</text>
+              <!-- Outer normal light cone -->
+              <polygon points="75,65 55,28 95,28" fill="rgba(56,189,248,0.22)" stroke="#38BDF8" stroke-width="1.2"/>
+              <line x1="75" y1="65" x2="75" y2="24" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="2 2"/>
+              <!-- Horizon tilted light cone -->
+              <polygon points="180,65 180,25 215,38" fill="rgba(245,158,11,0.28)" stroke="#F59E0B" stroke-width="1.2"/>
+              <!-- Inner fully inward light cone -->
+              <polygon points="275,55 315,35 315,68" fill="rgba(244,63,94,0.25)" stroke="#FB7185" stroke-width="1.2"/>
+              <text x="260" y="25" fill="#FDA4AF" font-size="8.5" font-family="JetBrains Mono">Semua lintasan ke pusat →</text>
+            </svg>
+          </div>
+        </div>
+
+        <!-- 4. Mengapa Tidak Dapat Diamati Langsung & Cara Ilmuwan Mempelajarinya -->
+        <div class="hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center font-mono font-bold text-emerald-400">04</span>
+              <span class="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">Metode Astrofisika Modern</span>
+            </div>
+            <h3 class="font-display text-xl font-bold text-white mb-2.5">Bagaimana Ilmuwan Mempelajari Keberadaannya?</h3>
+            <p class="text-sm text-slate-300 leading-relaxed mb-3">
+              Karena tidak memancarkan cahaya sendiri, black hole tidak dapat difoto seperti bintang biasa. Ilmuwan mendeteksinya melalui <strong>empat jejak fisik</strong> pada lingkungan sekitarnya:
+            </p>
+            <ul class="space-y-2 text-xs text-slate-300">
+              <li class="flex items-start gap-2">
+                <span class="text-amber-400 font-bold">1.</span>
+                <span><strong>Interferometri Radio VLBI (EHT):</strong> Merekam bayangan gelap (<em>shadow</em>) yang dikelilingi cincin emisi plasma panas pada M87* (2019) dan Sgr A* (2022).</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-sky-400 font-bold">2.</span>
+                <span><strong>Gelombang Gravitasi (LIGO–Virgo):</strong> Mendeteksi riak ruang-waktu dari tabrakan pasangan black hole (sejak GW150914).</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-orange-400 font-bold">3.</span>
+                <span><strong>Kinematika Orbit Bintang:</strong> Melacak bintang S2 yang mengorbit titik tak tampak bermassa ~4,3 juta $M_\odot$ di pusat Bima Sakti.</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <span class="text-emerald-400 font-bold">4.</span>
+                <span><strong>Emisi Sinar-X Piringan Akresi:</strong> Gas bintang pendamping yang terhisap memanas hingga jutaan Kelvin dan memancarkan sinar-X kuat (misal Cygnus X-1).</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom Navigation Action -->
+      <div class="hud-panel-amber rounded-2xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-xs font-mono text-amber-300">LANGKAH BERIKUTNYA</div>
+          <div class="font-display font-semibold text-white">Amati langsung bagaimana gravitasi membelokkan piringan akresi dalam ruang 3D</div>
+        </div>
+        <button onclick="navigateTo('explorer')" class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-sm transition">
+          Buka 3D Black Hole Explorer →
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+// ============================================================================
+// MODULE C: 3D BLACK HOLE EXPLORER
+// ============================================================================
+function renderExplorerView() {
+  if (isMobile()) return renderExplorerMobile();
+  return `
+    <section class="module-section flex-1 flex flex-col justify-between min-h-[calc(100dvh-8rem)] sm:min-h-[76vh] pointer-events-none">
+      <!-- Top Bar: Camera Presets & Label Toggle -->
+      <div class="flex flex-wrap items-center justify-between gap-2 pointer-events-auto">
+        <div class="hud-panel rounded-2xl p-2 flex flex-wrap items-center gap-1.5">
+          <span class="text-[11px] font-mono text-slate-400 px-2">SUDUT PANDANG:</span>
+          <button onclick="setExplorerPreset('equatorial')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-xs text-slate-200 transition">
+            Tampak Ekuatorial (Lensing Penuh)
+          </button>
+          <button onclick="setExplorerPreset('inclined')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-xs text-slate-200 transition">
+            Kemiringan 20°
+          </button>
+          <button onclick="setExplorerPreset('polar')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-xs text-slate-200 transition">
+            Tampak Kutub (Perspektif EHT M87*)
+          </button>
+          <button onclick="setExplorerPreset('close')" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-amber-500/20 border border-white/10 hover:border-amber-500/40 text-xs text-slate-200 transition">
+            Dekat Photon Sphere
+          </button>
+        </div>
+
+        <div class="hud-panel rounded-2xl p-2 flex items-center gap-2">
+          <button onclick="toggleExplorerLabels()" id="btn-toggle-labels"
+            class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.showLabels ? 'bg-sky-500/20 border-sky-400/50 text-sky-300' : 'bg-white/5 border-white/10 text-slate-300'}">
+            ${state.showLabels ? '● Label Bagian: AKTIF' : '○ Label Bagian: NONAKTIF'}
+          </button>
+          <button onclick="setRayModel('schwarzschild')"
+            class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.rayModel === 'schwarzschild' ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200' : 'bg-white/5 border-white/10 text-slate-300'}">
+            Geodesik Schwarzschild
+          </button>
+          <button onclick="setRayModel('artistic')"
+            class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.rayModel === 'artistic' ? 'bg-amber-500/20 border-amber-400/50 text-amber-200' : 'bg-white/5 border-white/10 text-slate-300'}">
+            Mode Artistik
+          </button>
+          <button onclick="resetExplorerView()"
+            class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/15 border border-white/10 text-xs text-slate-200 transition">
+            Reset Tampilan
+          </button>
+        </div>
+      </div>
+
+      <!-- Bottom Floating Control Console -->
+      <div class="mt-auto pt-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-end pointer-events-none">
+        <!-- Scientific Observation Telemetry Box -->
+        <div class="lg:col-span-5 hud-panel rounded-2xl p-4 pointer-events-auto">
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-[11px] font-mono text-amber-400">${state.rayModel === 'schwarzschild' ? 'LINTASAN CAHAYA: GEODESIK NULL SCHWARZSCHILD' : 'VISUALISASI PEMBELOKAN CAHAYA: MODE ARTISTIK'}</span>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded ${state.rayModel === 'schwarzschild' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'} border">${state.rayModel === 'schwarzschild' ? 'NUMERICAL NULL-GEODESIC' : 'HEURISTIC SHADER'}</span>
+          </div>
+          <p class="text-xs text-slate-300 leading-relaxed">
+            ${state.rayModel === 'schwarzschild' ? 'Lintasan cahaya dihitung dengan persamaan geodesik null Schwarzschild dalam satuan geometris (integrasi RK4, langkah sudut dan jumlah iterasi terbatas). Mode ini mengasumsikan ruang-waktu statis, tidak berotasi, dan simetri bola. Emisivitas piringan, warna, turbulensi, serta Doppler pada piringan tetap merupakan pendekatan visual; detail substruktur cincin foton tidak diklaim kuantitatif.' : 'Mode ini mempertahankan pembelokan cahaya heuristik, swirl artistik, dan efek visual piringan. Hasilnya tidak boleh dibaca sebagai solusi metrik Schwarzschild atau Kerr.'}
+          </p>
+        </div>
+
+        <!-- Real-time Relativistic Parameters Panel -->
+        <div class="lg:col-span-7 hud-panel-amber rounded-2xl p-4 pointer-events-auto">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <!-- Kerr Spin Parameter -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Kontrol Rotasi Visual (Bukan Parameter Kerr Fisis)</span>
+                <span id="val-spin" class="font-mono text-amber-300 font-semibold">${state.spin.toFixed(2)}</span>
+              </div>
+              <input type="range" min="0" max="0.99" step="0.01" value="${state.spin}" oninput="updateExplorerParam('spin', this.value)" ${state.rayModel === 'schwarzschild' ? 'disabled' : ''}>
+              <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-0.5">
+                <span>0.0 (visual minimum)</span>
+                <span>0.99 (visual maksimum)</span>
+              </div>
+              <p class="text-[10px] text-amber-200/80 mt-2 leading-relaxed">${state.rayModel === 'schwarzschild' ? 'Nonaktif pada mode ini: geometri tidak berotasi (Schwarzschild, a* = 0). Pilih Mode Artistik untuk mengaktifkan swirl visual; itu bukan simulasi Kerr.' : 'Kontrol ini hanya mengubah efek visual heuristik. Horizon, ISCO, ergosfer, dan lintasan foton tidak dihitung dari metrik Kerr.'}</p>
+            </div>
+
+            <!-- Accretion Disk Luminosity -->
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300 font-medium">Laju &amp; Luminositas Akresi</span>
+                <span id="val-accretion" class="font-mono text-amber-300 font-semibold">${Math.round(state.accretion * 100)}%</span>
+              </div>
+              <input type="range" min="0.25" max="1.8" step="0.05" value="${state.accretion}" oninput="updateExplorerParam('accretion', this.value)">
+              <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-0.5">
+                <span>Redup (Sgr A*)</span>
+                <span>Aktif (Quasar)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Toggle Switches -->
+          <div class="mt-3 pt-3 border-t border-white/10 flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <button onclick="toggleExplorerFlag('doppler')" id="btn-doppler"
+                class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.doppler ? 'bg-amber-500/25 border-amber-400 text-amber-200' : 'bg-white/5 border-white/10 text-slate-400'}">
+                Doppler Beaming: ${state.doppler ? 'ON' : 'OFF'}
+              </button>
+              <button onclick="toggleExplorerFlag('jets')" id="btn-jets"
+                class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.jets ? 'bg-sky-500/25 border-sky-400 text-sky-200' : 'bg-white/5 border-white/10 text-slate-400'}">
+                Jet Relativistik: ${state.jets ? 'ON' : 'OFF'}
+              </button>
+              <button onclick="toggleExplorerFlag('autoRotate')" id="btn-autorotate"
+                class="px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.autoRotate ? 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200' : 'bg-white/5 border-white/10 text-slate-400'}">
+                Orbit Kamera Otomatis: ${state.autoRotate ? 'ON' : 'OFF'}
+              </button>
+            </div>
+            <span class="text-[11px] font-mono text-slate-400">Sentuh / Drag untuk rotasi 360°</span>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderExplorerMobile() {
+  const schw = state.rayModel === 'schwarzschild';
+  const chip = 'shrink-0 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-200 whitespace-nowrap active:bg-amber-500/20';
+  const seg = (on, color) => 'flex-1 px-2 py-2 rounded-xl text-[11px] font-semibold border transition ' + (on ? color : 'bg-white/5 border-white/10 text-slate-300');
+  const tog = (on, color) => 'px-3 py-1.5 rounded-xl text-[11px] font-medium border transition ' + (on ? color : 'bg-white/5 border-white/10 text-slate-400');
+  return `
+    <section class="module-section flex-1 flex flex-col justify-between min-h-[calc(100dvh-8rem)] pointer-events-none">
+      <div class="pointer-events-auto -mx-3 px-3 overflow-x-auto no-scrollbar flex items-center gap-1.5 py-1">
+        <button onclick="setExplorerPreset('equatorial')" class="${chip}">Ekuatorial</button>
+        <button onclick="setExplorerPreset('inclined')" class="${chip}">Miring 20°</button>
+        <button onclick="setExplorerPreset('polar')" class="${chip}">Kutub (EHT)</button>
+        <button onclick="setExplorerPreset('close')" class="${chip}">Dekat Photon Sphere</button>
+        <button onclick="resetExplorerView()" class="${chip}">Reset</button>
+      </div>
+
+      <div class="pointer-events-auto hud-panel-amber rounded-2xl overflow-hidden">
+        <div class="flex items-center gap-1.5 p-2">
+          <button onclick="setRayModel('schwarzschild')" class="${seg(schw, 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200')}">Geodesik</button>
+          <button onclick="setRayModel('artistic')" class="${seg(!schw, 'bg-amber-500/20 border-amber-400/50 text-amber-200')}">Artistik</button>
+          <button onclick="toggleSheet()" id="sheet-toggle" class="${seg(false, '')} text-amber-300">${state.sheetOpen ? 'Tutup ▾' : 'Kontrol ▴'}</button>
+          <button onclick="toggleFocusMode()" class="${seg(false, '')} text-sky-300" aria-label="Mode Fokus">Fokus</button>
+        </div>
+
+        <div id="sheet-body" class="${state.sheetOpen ? '' : 'hidden'} sheet-scroll max-h-[42vh] overflow-y-auto p-3 space-y-3 border-t border-white/10">
+          <div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded border ${schw ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'}">${schw ? 'NUMERICAL NULL-GEODESIC' : 'HEURISTIC SHADER'}</span>
+            <p class="text-[11px] text-slate-300 leading-relaxed mt-2">${schw
+              ? 'Lintasan cahaya dihitung dari geodesik null Schwarzschild (RK4) pada ruang-waktu statis tanpa rotasi. Emisivitas, warna, dan Doppler piringan tetap pendekatan visual.'
+              : 'Mode artistik: pembelokan heuristik dan swirl visual. Bukan solusi metrik Schwarzschild maupun Kerr.'}</p>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Rotasi Visual (bukan spin Kerr)</span>
+              <span id="val-spin" class="font-mono text-amber-300 font-semibold">${state.spin.toFixed(2)}</span>
+            </div>
+            <input type="range" min="0" max="0.99" step="0.01" value="${state.spin}" oninput="updateExplorerParam('spin', this.value)" ${schw ? 'disabled' : ''}>
+            ${schw ? '<p class="text-[10px] text-amber-200/80 mt-1">Nonaktif pada mode Geodesik (a* = 0). Pilih Artistik untuk mengaktifkan.</p>' : ''}
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1">
+              <span class="text-slate-300 font-medium">Laju &amp; Luminositas Akresi</span>
+              <span id="val-accretion" class="font-mono text-amber-300 font-semibold">${Math.round(state.accretion * 100)}%</span>
+            </div>
+            <input type="range" min="0.25" max="1.8" step="0.05" value="${state.accretion}" oninput="updateExplorerParam('accretion', this.value)">
+          </div>
+
+          <div class="flex flex-wrap gap-1.5">
+            <button onclick="toggleExplorerFlag('doppler')" class="${tog(state.doppler, 'bg-amber-500/25 border-amber-400 text-amber-200')}">Doppler: ${state.doppler ? 'ON' : 'OFF'}</button>
+            <button onclick="toggleExplorerFlag('jets')" class="${tog(state.jets, 'bg-sky-500/25 border-sky-400 text-sky-200')}">Jet: ${state.jets ? 'ON' : 'OFF'}</button>
+            <button onclick="toggleExplorerFlag('autoRotate')" id="btn-autorotate" class="${tog(state.autoRotate, 'bg-emerald-500/20 border-emerald-400/50 text-emerald-200')}">Orbit Otomatis: ${state.autoRotate ? 'ON' : 'OFF'}</button>
+          </div>
+          <p class="text-[10px] font-mono text-slate-500">Geser untuk memutar • cubit untuk zoom</p>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function setExplorerPreset(preset) {
+  state.autoRotate = false;
+  if (preset === 'equatorial') {
+    state.targetTheta = 0.12;
+    state.targetPhi = 1.49;
+    state.targetRadius = 6.2;
+  } else if (preset === 'inclined') {
+    state.targetTheta = 0.25;
+    state.targetPhi = 1.22;
+    state.targetRadius = 6.5;
+  } else if (preset === 'polar') {
+    state.targetTheta = 0.0;
+    state.targetPhi = 0.24;
+    state.targetRadius = 6.8;
+  } else if (preset === 'close') {
+    state.targetTheta = 0.35;
+    state.targetPhi = 1.38;
+    state.targetRadius = 3.8;
+  }
+  state.targetRadius *= radiusScale();
+  const arBtn = document.getElementById('btn-autorotate');
+  if (arBtn) arBtn.textContent = 'Orbit Kamera Otomatis: OFF';
+}
+
+function resetExplorerView() {
+  state.spin = 0.85;
+  state.accretion = 1.0;
+  state.doppler = true;
+  state.jets = false;
+  state.targetTheta = 0.25;
+  state.targetPhi = 1.28;
+  state.targetRadius = 6.4;
+  state.autoRotate = true;
+  navigateTo('explorer');
+  showToast('Tampilan dan parameter fisik dikembalikan ke pengaturan awal.');
+}
+
+function toggleExplorerLabels() {
+  state.showLabels = !state.showLabels;
+  const btn = document.getElementById('btn-toggle-labels');
+  if (btn) {
+    btn.textContent = state.showLabels ? '● Label Bagian: AKTIF' : '○ Label Bagian: NONAKTIF';
+    btn.className = `px-3 py-1.5 rounded-xl text-xs font-medium border transition ${state.showLabels ? 'bg-sky-500/20 border-sky-400/50 text-sky-300' : 'bg-white/5 border-white/10 text-slate-300'}`;
+  }
+}
+
+function setRayModel(model) {
+  if (model !== 'schwarzschild' && model !== 'artistic') return;
+  state.rayModel = model;
+  if (model === 'schwarzschild') {
+    state.spin = 0.0;
+    state.jets = false;
+  }
+  if (renderer) onWindowResize();
+  navigateTo(state.activeModule);
+}
+
+function updateExplorerParam(key, val) {
+  const num = parseFloat(val);
+  state[key] = num;
+  if (key === 'spin') {
+    document.getElementById('val-spin').textContent = num.toFixed(2);
+  } else if (key === 'accretion') {
+    document.getElementById('val-accretion').textContent = Math.round(num * 100) + '%';
+  }
+}
+
+function toggleExplorerFlag(key) {
+  state[key] = !state[key];
+  navigateTo('explorer');
+}
+
+// ============================================================================
+// MODULE D: BLACK HOLE ANATOMY
+// ============================================================================
+function renderAnatomyView() {
+  if (isMobile()) return renderAnatomyMobile();
+  const currentPart = ANATOMY_PARTS.find(p => p.id === state.selectedAnatomy) || ANATOMY_PARTS[0];
+  const badgeStyle = currentPart.epistemicColor === 'emerald'
+    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    : currentPart.epistemicColor === 'sky'
+      ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+      : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+
+  return `
+    <section class="module-section flex-1 flex flex-col justify-between min-h-[calc(100dvh-8rem)] sm:min-h-[76vh] pointer-events-none">
+      <!-- Top Control Bar: Structural Separation Mode -->
+      <div class="flex flex-wrap items-center justify-between gap-3 pointer-events-auto">
+        <div class="hud-panel rounded-2xl px-4 py-2.5 flex items-center gap-3">
+          <div>
+            <div class="text-[10px] font-mono text-amber-400">MODUL 04 • BEDAH STRUKTUR SPASIAL</div>
+            <h2 class="font-display text-base sm:text-lg font-bold text-white">Anatomi Komponen Black Hole</h2>
+          </div>
+        </div>
+
+        <button onclick="toggleExplodedMode()"
+          class="px-4 py-2.5 rounded-2xl font-display font-semibold text-xs sm:text-sm border transition flex items-center gap-2 ${
+            state.explodedMode
+              ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-[0_0_24px_rgba(245,158,11,0.5)]'
+              : 'hud-panel text-amber-300 border-amber-500/40 hover:bg-amber-500/15'
+          }">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/></svg>
+          <span>Mode Pemisahan Struktur: ${state.explodedMode ? 'AKTIF (TERPISAH)' : 'NONAKTIF (MENYATU)'}</span>
+        </button>
+      </div>
+
+      <!-- Main Split Layout: Left Part Selector, Right Scientific Inspector Card -->
+      <div class="my-auto py-4 grid grid-cols-1 lg:grid-cols-12 gap-4 items-center pointer-events-none">
+        <!-- Left Part Selector List -->
+        <div class="lg:col-span-4 space-y-2 pointer-events-auto">
+          ${ANATOMY_PARTS.map((part, idx) => {
+            const active = part.id === state.selectedAnatomy;
+            return `
+              <button onclick="selectAnatomyPart('${part.id}')"
+                class="w-full text-left p-3.5 rounded-2xl transition flex items-center justify-between gap-3 ${
+                  active
+                    ? 'hud-panel-amber border-amber-400/70 translate-x-1'
+                    : 'hud-panel hover:bg-white/[0.06] opacity-85 hover:opacity-100'
+                }">
+                <div class="flex items-center gap-3">
+                  <span class="w-7 h-7 rounded-lg font-mono text-xs font-bold flex items-center justify-center ${
+                    active ? 'bg-amber-500 text-slate-950' : 'bg-white/10 text-slate-300'
+                  }">0${idx + 1}</span>
+                  <div>
+                    <div class="font-display font-semibold text-sm text-white">${part.name.split(' (')[0]}</div>
+                    <div class="text-[11px] text-slate-400">${part.name.split(' (')[1]?.replace(')', '') || ''}</div>
+                  </div>
+                </div>
+                <span class="text-amber-400 text-xs">${active ? '●' : '→'}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+
+        <!-- Center Spacer letting 3D Black Hole breathe -->
+        <div class="hidden lg:block lg:col-span-3"></div>
+
+        <!-- Right Detailed Scientific Inspector Panel -->
+        <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-5 sm:p-6 pointer-events-auto">
+          <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <span class="px-2.5 py-1 rounded-full text-[11px] font-mono border ${badgeStyle}">
+              ${currentPart.epistemic}
+            </span>
+          </div>
+
+          <h3 class="font-display text-xl sm:text-2xl font-bold text-white mb-2">${currentPart.name}</h3>
+          
+          <div class="p-3 rounded-xl bg-black/50 border border-white/10 mb-4 font-mono text-xs text-amber-300 overflow-x-auto">
+            $$${currentPart.radiusFormula}$$
+          </div>
+
+          <div class="space-y-3 text-xs sm:text-sm">
+            <div>
+              <div class="text-[11px] font-mono uppercase tracking-wider text-amber-400 mb-1">Penjelasan Ilmiah</div>
+              <p class="text-slate-200 leading-relaxed">${currentPart.summary}</p>
+            </div>
+            <div>
+              <div class="text-[11px] font-mono uppercase tracking-wider text-sky-400 mb-1">Karakteristik &amp; Fungsi Fisis</div>
+              <p class="text-slate-300 leading-relaxed">${currentPart.characteristics}</p>
+            </div>
+            <div>
+              <div class="text-[11px] font-mono uppercase tracking-wider text-emerald-400 mb-1">Hubungan dengan Fenomena Black Hole</div>
+              <p class="text-slate-300 leading-relaxed">${currentPart.relation}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function renderAnatomyMobile() {
+  const cur = ANATOMY_PARTS.find(p => p.id === state.selectedAnatomy) || ANATOMY_PARTS[0];
+  const badge = cur.epistemicColor === 'emerald'
+    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+    : cur.epistemicColor === 'sky'
+      ? 'bg-sky-500/15 text-sky-300 border-sky-500/30'
+      : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+  return `
+    <section class="module-section flex-1 flex flex-col justify-between min-h-[calc(100dvh-8rem)] pointer-events-none">
+      <div class="pointer-events-auto flex items-center justify-between gap-2 py-1">
+        <div class="hud-panel rounded-xl px-3 py-1.5 text-xs font-display font-bold text-white">Anatomi Black Hole</div>
+        <button onclick="toggleExplodedMode()" class="px-3 py-1.5 rounded-xl text-[11px] font-semibold border transition ${state.explodedMode ? 'bg-amber-500 text-slate-950 border-amber-300' : 'hud-panel text-amber-300 border-amber-500/40'}">Pisahkan: ${state.explodedMode ? 'ON' : 'OFF'}</button>
+      </div>
+
+      <div class="pointer-events-auto hud-panel-amber rounded-2xl overflow-hidden">
+        <div class="flex gap-1.5 overflow-x-auto no-scrollbar p-2">
+          ${ANATOMY_PARTS.map((part) => {
+            const active = part.id === state.selectedAnatomy;
+            return `<button onclick="selectAnatomyPart('${part.id}')" class="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-medium border whitespace-nowrap transition ${active ? 'bg-amber-500 text-slate-950 border-amber-300 font-bold' : 'bg-white/5 text-slate-300 border-white/10'}">${part.name.split(' (')[0]}</button>`;
+          }).join('')}
+        </div>
+        <div class="px-3 pb-2 flex items-center justify-between gap-2">
+          <div class="font-display font-bold text-sm text-amber-300 truncate">${cur.name}</div>
+          <button onclick="toggleSheet()" id="sheet-toggle" class="shrink-0 px-3 py-1.5 rounded-xl text-[11px] font-semibold border border-white/10 bg-white/5 text-amber-300">${state.sheetOpen ? 'Tutup ▾' : 'Detail ▴'}</button>
+        </div>
+        <div id="sheet-body" class="${state.sheetOpen ? '' : 'hidden'} sheet-scroll max-h-[40vh] overflow-y-auto px-3 pb-3 pt-3 space-y-3 border-t border-white/10">
+          <span class="inline-block px-2.5 py-1 rounded-full text-[10px] font-mono border ${badge}">${cur.epistemic}</span>
+          <div class="p-2.5 rounded-xl bg-black/50 border border-white/10 font-mono text-[11px] text-amber-300 overflow-x-auto">$$${cur.radiusFormula}$$</div>
+          <div>
+            <div class="text-[10px] font-mono uppercase tracking-wider text-amber-400 mb-1">Penjelasan Ilmiah</div>
+            <p class="text-xs text-slate-200 leading-relaxed">${cur.summary}</p>
+          </div>
+          <div>
+            <div class="text-[10px] font-mono uppercase tracking-wider text-sky-400 mb-1">Karakteristik &amp; Fungsi Fisis</div>
+            <p class="text-xs text-slate-300 leading-relaxed">${cur.characteristics}</p>
+          </div>
+          <div>
+            <div class="text-[10px] font-mono uppercase tracking-wider text-emerald-400 mb-1">Hubungan dengan Fenomena Black Hole</div>
+            <p class="text-xs text-slate-300 leading-relaxed">${cur.relation}</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function selectAnatomyPart(partId) {
+  state.selectedAnatomy = partId;
+  const part = ANATOMY_PARTS.find(p => p.id === partId);
+  if (part && part.cameraTarget) {
+    state.targetTheta = part.cameraTarget.theta;
+    state.targetPhi = part.cameraTarget.phi;
+    state.targetRadius = part.cameraTarget.radius;
+  }
+  navigateTo('anatomy');
+}
+
+function toggleExplodedMode() {
+  state.explodedMode = !state.explodedMode;
+  navigateTo('anatomy');
+  showToast(state.explodedMode
+    ? 'Mode Pemisahan Struktur aktif: lapisan piringan akresi & bola foton dipisahkan secara vertikal.'
+    : 'Struktur spasial disatukan kembali ke konfigurasi fisis sebenarnya.');
+}
+
+// ============================================================================
+// MODULE E: AUGMENTED REALITY (WebXR + HONEST NON-WebXR SPATIAL FALLBACK)
+// ============================================================================
+let arRenderer, arScene, arCamera, arReticle, arBlackHoleGroup, arHitTestSource = null, arHitTestSourceRequested = false;
+let fallbackScene, fallbackCamera, fallbackRenderer, fallbackGroup;
+
+function renderARView() {
+  const currentPart = ANATOMY_PARTS.find(p => p.id === state.arSelectedPart) || ANATOMY_PARTS[0];
+
+  return `
+    <section class="module-section pointer-events-auto space-y-5">
+      <div class="hud-panel rounded-3xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-3 mb-2">
+          <span class="px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 font-mono text-xs">
+            MODUL 05 • AUGMENTED REALITY (WebXR) &amp; INSPEKSI SPASIAL 3D
+          </span>
+          <span id="webxr-status-badge" class="px-3 py-1 rounded-full bg-white/5 border border-white/15 font-mono text-xs text-slate-300">
+            Memeriksa dukungan WebXR perangkat...
+          </span>
+        </div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mb-2">Hadirkan Black Hole ke Lingkungan Nyata</h2>
+        <p class="text-sm text-slate-300 max-w-3xl leading-relaxed">
+          Gunakan teknologi <strong>WebXR Immersive-AR</strong> untuk memindai permukaan meja atau lantai ruang pameran dan menempatkan model black hole 3D interaktif secara nyata. Jika browser atau perangkat desktop tidak mendukung sesi WebXR AR, sistem secara transparan menyediakan <strong>Mode Inspeksi Spasial 3D Interaktif</strong>.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- AR / Spatial 3D Interactive Stage -->
+        <div class="lg:col-span-8 hud-panel rounded-3xl overflow-hidden relative min-h-[430px] flex flex-col justify-between">
+          <canvas id="ar-fallback-canvas" class="w-full h-[430px] block touch-none"></canvas>
+
+          <!-- Top Overlay Status inside Stage -->
+          <div class="absolute top-4 left-4 right-4 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md border border-white/15 text-xs font-mono text-amber-300">
+              ${state.arSessionActive ? '● SESI WEBAR AKTIF — Ketuk permukaan untuk menempatkan objek' : 'MODE INSPEKSI SPASIAL 3D (PRATINJAU OBJEK AR)'}
+            </div>
+            <button id="btn-launch-webxr" onclick="startWebXRSession()"
+              class="pointer-events-auto px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 font-display font-bold text-xs sm:text-sm shadow-lg transition flex items-center gap-2">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><circle cx="12" cy="13" r="3"/></svg>
+              <span>Aktifkan Kamera WebAR</span>
+            </button>
+          </div>
+
+          <!-- Bottom Manipulation Controls -->
+          <div class="p-4 bg-black/75 backdrop-blur-md border-t border-white/10 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">Skala Objek Virtual</span>
+                <span id="ar-scale-val" class="font-mono text-amber-300">${state.arScale.toFixed(1)}x</span>
+              </div>
+              <input type="range" min="0.4" max="2.2" step="0.1" value="${state.arScale}" oninput="updateARTransform('scale', this.value)">
+            </div>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="text-slate-300">Rotasi Azimut Objek</span>
+                <span id="ar-rot-val" class="font-mono text-sky-300">${Math.round(state.arRotationY)}°</span>
+              </div>
+              <input type="range" min="0" max="360" step="1" value="${state.arRotationY}" class="slider-blue" oninput="updateARTransform('rot', this.value)">
+            </div>
+            <div class="flex justify-end gap-2">
+              <button onclick="resetARTransform()" class="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-xs text-white font-medium transition">
+                Reset Posisi &amp; Skala
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Side: Interactive Component Inspection inside AR -->
+        <div class="lg:col-span-4 hud-panel-amber rounded-3xl p-5 flex flex-col justify-between space-y-4">
+          <div>
+            <div class="text-[11px] font-mono text-amber-400 mb-1">INTERAKSI KOMPONEN MODEL AR</div>
+            <h3 class="font-display text-lg font-bold text-white mb-3">Pilih Bagian untuk Diinspeksi</h3>
+            <div class="flex flex-wrap gap-1.5 mb-4">
+              ${ANATOMY_PARTS.map(p => `
+                <button onclick="selectARPart('${p.id}')"
+                  class="px-2.5 py-1.5 rounded-xl text-xs font-medium border transition ${
+                    state.arSelectedPart === p.id
+                      ? 'bg-amber-500 text-slate-950 border-amber-300 font-bold'
+                      : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+                  }">
+                  ${p.name.split(' (')[0]}
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2.5">
+              <div class="font-display font-bold text-base text-amber-300">${currentPart.name}</div>
+              <p class="text-xs text-slate-200 leading-relaxed">${currentPart.summary}</p>
+              <p class="text-xs text-slate-400 leading-relaxed">${currentPart.characteristics}</p>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs text-slate-300 leading-relaxed">
+            <strong class="text-sky-300">Catatan Teknis WebAR:</strong> Fitur kamera AR membutuhkan browser seluler yang mendukung standar <em>WebXR Device API (immersive-ar)</em> melalui koneksi HTTPS (misalnya Chrome pada Android dengan Google Play Services for AR). Aplikasi ini tidak memalsukan hamparan kamera jika sensor AR tidak tersedia.
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+// Build a dedicated 3D Mesh Group for WebXR & Spatial Fallback Inspection
+function createBlackHole3DAssembly() {
+  const group = new THREE.Group();
+
+  // 1. Event Horizon Sphere (Deep Obsidian Black)
+  const horizonGeo = new THREE.SphereGeometry(0.45, 48, 48);
+  const horizonMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+  const horizonMesh = new THREE.Mesh(horizonGeo, horizonMat);
+  horizonMesh.name = 'event_horizon';
+  group.add(horizonMesh);
+
+  // 2. Photon Sphere Halo Ring
+  const photonGeo = new THREE.RingGeometry(0.66, 0.71, 64);
+  const photonMat = new THREE.MeshBasicMaterial({
+    color: 0xffd27d,
+    side: THREE.DoubleSide,
+    transparent: true,
+    opacity: 0.85
+  });
+  const photonMesh = new THREE.Mesh(photonGeo, photonMat);
+  photonMesh.name = 'photon_sphere';
+  group.add(photonMesh);
+
+  // 3. Relativistic Accretion Disk (Layered glowing torus/ring structures)
+  const diskGroup = new THREE.Group();
+  diskGroup.name = 'accretion_disk';
+  const ringSpecs = [
+    { inner: 0.75, outer: 1.05, color: 0xfef08a, opacity: 0.92 },
+    { inner: 1.05, outer: 1.48, color: 0xf59e0b, opacity: 0.78 },
+    { inner: 1.48, outer: 1.95, color: 0xea580c, opacity: 0.52 },
+    { inner: 1.95, outer: 2.35, color: 0x9a3412, opacity: 0.26 }
+  ];
+  ringSpecs.forEach(spec => {
+    const rGeo = new THREE.RingGeometry(spec.inner, spec.outer, 72);
+    const rMat = new THREE.MeshBasicMaterial({
+      color: spec.color,
+      side: THREE.DoubleSide,
+      transparent: true,
+      opacity: spec.opacity
+    });
+    const rMesh = new THREE.Mesh(rGeo, rMat);
+    rMesh.rotation.x = Math.PI / 2;
+    diskGroup.add(rMesh);
+  });
+  group.add(diskGroup);
+
+  // 4. Lensed Secondary Arc (Vertical halo simulating gravitational lensing over/under shadow)
+  const lensGeo = new THREE.TorusGeometry(0.84, 0.045, 16, 72);
+  const lensMat = new THREE.MeshBasicMaterial({
+    color: 0xfbbf24,
+    transparent: true,
+    opacity: 0.65
+  });
+  const lensArc = new THREE.Mesh(lensGeo, lensMat);
+  lensArc.name = 'shadow';
+  group.add(lensArc);
+
+  // 5. Singularity Core Indicator (visible when selected)
+  const singGeo = new THREE.SphereGeometry(0.08, 24, 24);
+  const singMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: true });
+  const singMesh = new THREE.Mesh(singGeo, singMat);
+  singMesh.name = 'singularity';
+  group.add(singMesh);
+
+  return group;
+}
+
+async function initARCanvasFallback() {
+  const badge = document.getElementById('webxr-status-badge');
+  const launchBtn = document.getElementById('btn-launch-webxr');
+
+  if (navigator.xr && navigator.xr.isSessionSupported) {
+    try {
+      const supported = await navigator.xr.isSessionSupported('immersive-ar');
+      state.arSupported = supported;
+      if (badge) {
+        badge.textContent = supported
+          ? '● Perangkat Mendukung WebXR AR (Siap Kamera)'
+          : '○ WebXR AR Tidak Tersedia di Browser Ini — Mode Spasial 3D Aktif';
+        badge.className = supported
+          ? 'px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/40 font-mono text-xs text-emerald-300'
+          : 'px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 font-mono text-xs text-amber-300';
+      }
+      if (!supported && launchBtn) {
+        launchBtn.classList.add('opacity-75');
+      }
+    } catch (err) {
+      state.arSupported = false;
+    }
+  } else {
+    state.arSupported = false;
+    if (badge) {
+      badge.textContent = '○ Perangkat Non-WebXR — Mode Inspeksi Spasial 3D Aktif';
+      badge.className = 'px-3 py-1 rounded-full bg-amber-500/15 border border-amber-500/35 font-mono text-xs text-amber-300';
+    }
+  }
+
+  const canvas = document.getElementById('ar-fallback-canvas');
+  if (!canvas) return;
+
+  fallbackRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  fallbackRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  fallbackRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
+
+  fallbackScene = new THREE.Scene();
+  fallbackCamera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  fallbackCamera.position.set(0, 1.35, 3.8);
+  fallbackCamera.lookAt(0, 0, 0);
+
+  // Observatory pedestal reference grid for spatial scale
+  const gridHelper = new THREE.PolarGridHelper(2.6, 12, 6, 64, 0x38bdf8, 0x1e293b);
+  gridHelper.position.y = -0.85;
+  fallbackScene.add(gridHelper);
+
+  fallbackGroup = createBlackHole3DAssembly();
+  fallbackGroup.scale.setScalar(state.arScale);
+  fallbackGroup.rotation.y = THREE.MathUtils.degToRad(state.arRotationY);
+  fallbackScene.add(fallbackGroup);
+
+  let dragAR = false;
+  let prevX = 0;
+  canvas.addEventListener('pointerdown', (e) => { dragAR = true; prevX = e.clientX; });
+  window.addEventListener('pointermove', (e) => {
+    if (!dragAR || state.activeModule !== 'ar') return;
+    state.arRotationY = (state.arRotationY + (e.clientX - prevX) * 0.6 + 360) % 360;
+    prevX = e.clientX;
+    if (fallbackGroup) fallbackGroup.rotation.y = THREE.MathUtils.degToRad(state.arRotationY);
+    const rotEl = document.getElementById('ar-rot-val');
+    if (rotEl) rotEl.textContent = Math.round(state.arRotationY) + '°';
+  });
+  window.addEventListener('pointerup', () => { dragAR = false; });
+
+  function renderFallbackLoop() {
+    if (state.activeModule !== 'ar') return;
+    requestAnimationFrame(renderFallbackLoop);
+    if (fallbackGroup) {
+      const disk = fallbackGroup.getObjectByName('accretion_disk');
+      if (disk) disk.rotation.y += 0.015;
+      const photon = fallbackGroup.getObjectByName('photon_sphere');
+      if (photon) photon.lookAt(fallbackCamera.position);
+      const lens = fallbackGroup.getObjectByName('shadow');
+      if (lens) lens.lookAt(fallbackCamera.position);
+    }
+    fallbackRenderer.render(fallbackScene, fallbackCamera);
+  }
+  renderFallbackLoop();
+}
+
+async function startWebXRSession() {
+  if (!navigator.xr || !state.arSupported) {
+    showToast('Perangkat/browser ini tidak mendukung WebXR immersive-ar. Gunakan kontrol Inspeksi Spasial 3D di bawah.');
+    return;
+  }
+  try {
+    const session = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['hit-test'],
+      optionalFeatures: ['dom-overlay'],
+      domOverlay: { root: document.body }
+    });
+
+    state.arSessionActive = true;
+    const arCanvas = document.createElement('canvas');
+    arRenderer = new THREE.WebGLRenderer({ canvas: arCanvas, antialias: true, alpha: true });
+    arRenderer.xr.enabled = true;
+    arRenderer.xr.setReferenceSpaceType('local');
+    await arRenderer.xr.setSession(session);
+
+    arScene = new THREE.Scene();
+    arCamera = new THREE.PerspectiveCamera();
+
+    // Reticle for real-world surface placement
+    arReticle = new THREE.Mesh(
+      new THREE.RingGeometry(0.12, 0.16, 32).rotateX(-Math.PI / 2),
+      new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+    );
+    arReticle.matrixAutoUpdate = false;
+    arReticle.visible = false;
+    arScene.add(arReticle);
+
+    arBlackHoleGroup = createBlackHole3DAssembly();
+    arBlackHoleGroup.scale.setScalar(0.22 * state.arScale);
+    arBlackHoleGroup.visible = false;
+    arScene.add(arBlackHoleGroup);
+
+    const controller = arRenderer.xr.getController(0);
+    controller.addEventListener('select', () => {
+      if (arReticle.visible && arBlackHoleGroup) {
+        arBlackHoleGroup.position.setFromMatrixPosition(arReticle.matrix);
+        arBlackHoleGroup.visible = true;
+        showToast('Model Black Hole 3D ditempatkan pada permukaan nyata!');
+      }
+    });
+    arScene.add(controller);
+
+    session.addEventListener('end', () => {
+      state.arSessionActive = false;
+      arHitTestSourceRequested = false;
+      arHitTestSource = null;
+      navigateTo('ar');
+    });
+
+    arRenderer.setAnimationLoop((timestamp, frame) => {
+      if (frame) {
+        const referenceSpace = arRenderer.xr.getReferenceSpace();
+        const xrSession = arRenderer.xr.getSession();
+        if (!arHitTestSourceRequested) {
+          xrSession.requestReferenceSpace('viewer').then((viewerSpace) => {
+            xrSession.requestHitTestSource({ space: viewerSpace }).then((source) => {
+              arHitTestSource = source;
+            });
+          });
+          arHitTestSourceRequested = true;
+        }
+        if (arHitTestSource) {
+          const hitTestResults = frame.getHitTestResults(arHitTestSource);
+          if (hitTestResults.length > 0) {
+            const hit = hitTestResults[0];
+            arReticle.visible = true;
+            arReticle.matrix.fromArray(hit.getPose(referenceSpace).transform.matrix);
+          } else {
+            arReticle.visible = false;
+          }
+        }
+      }
+      if (arBlackHoleGroup && arBlackHoleGroup.visible) {
+        const disk = arBlackHoleGroup.getObjectByName('accretion_disk');
+        if (disk) disk.rotation.y += 0.02;
+      }
+      arRenderer.render(arScene, arCamera);
+    });
+  } catch (err) {
+    showToast('Gagal memulai sesi kamera WebXR: ' + err.message);
+  }
+}
+
+function updateARTransform(type, val) {
+  const num = parseFloat(val);
+  if (type === 'scale') {
+    state.arScale = num;
+    document.getElementById('ar-scale-val').textContent = num.toFixed(1) + 'x';
+    if (fallbackGroup) fallbackGroup.scale.setScalar(num);
+    if (arBlackHoleGroup) arBlackHoleGroup.scale.setScalar(0.22 * num);
+  } else if (type === 'rot') {
+    state.arRotationY = num;
+    document.getElementById('ar-rot-val').textContent = Math.round(num) + '°';
+    if (fallbackGroup) fallbackGroup.rotation.y = THREE.MathUtils.degToRad(num);
+    if (arBlackHoleGroup) arBlackHoleGroup.rotation.y = THREE.MathUtils.degToRad(num);
+  }
+}
+
+function resetARTransform() {
+  state.arScale = 1.0;
+  state.arRotationY = 0;
+  navigateTo('ar');
+}
+
+function selectARPart(partId) {
+  state.arSelectedPart = partId;
+  navigateTo('ar');
+}
+
+// ============================================================================
+// MODULE F: PHYSICS OF BLACK HOLES (LABORATORIUM FISIKA INTERAKTIF)
+// ============================================================================
+function renderPhysicsView() {
+  const tabs = [
+    { id: 'schwarzschild', title: '1. Radius Schwarzschild', formula: 'r_s = \\frac{2GM}{c^2}' },
+    { id: 'timedilation', title: '2. Dilatasi Waktu Gravitasi', formula: '\\Delta t = \\frac{\\Delta\\tau}{\\sqrt{1 - \\frac{2GM}{rc^2}}}' },
+    { id: 'lensing', title: '3. Pelensaan Gravitasi', formula: '\\alpha \\approx \\frac{4GM}{bc^2}' },
+     { id: 'hawking', title: '4. Temperatur Hawking', formula: 'T_H = \\frac{\\hbar c^3}{8\\pi GM k_B}' },
+    { id: 'kerr', title: '5. Geometri Kerr', formula: 'r_+ = M(1+\\sqrt{1-a_*^2})' }
+  ];
+
+  return `
+    <section class="module-section pointer-events-auto space-y-5">
+      <!-- Top Header & Sub-Lab Selector -->
+      <div class="hud-panel rounded-3xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="px-3 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 font-mono text-xs">
+            MODUL 06 • LABORATORIUM FISIKA RELATIVISTIK &amp; KUANTUM
+          </span>
+          <span class="text-xs font-mono text-slate-400">Satuan Internasional (SI) &amp; Astrofisika ($M_\\odot$)</span>
+        </div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mb-4">Eksperimen Persamaan Fisika Black Hole</h2>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-2.5">
+          ${tabs.map(t => `
+            <button onclick="switchPhysicsTab('${t.id}')"
+              class="p-3.5 rounded-2xl border text-left transition ${
+                state.physicsTab === t.id
+                  ? 'hud-panel-amber border-amber-400 text-white shadow-[0_0_20px_rgba(245,158,11,0.2)]'
+                  : 'bg-white/[0.03] border-white/10 text-slate-300 hover:bg-white/[0.07]'
+              }">
+              <div class="font-display font-semibold text-xs sm:text-sm mb-1">${t.title}</div>
+              <div class="text-xs text-amber-300 font-mono">$${t.formula}$</div>
+            </button>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Active Physics Experiment Container -->
+      <div id="physics-lab-body">
+        ${renderActivePhysicsSubLab()}
+      </div>
+    </section>
+  `;
+}
+
+function switchPhysicsTab(tabId) {
+  state.physicsTab = tabId;
+  navigateTo('physics');
+}
+
+function renderActivePhysicsSubLab() {
+  if (state.physicsTab === 'schwarzschild') {
+    return `
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-6 space-y-4">
+          <div class="inline-flex px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono">
+            Solusi Eksak Schwarzschild (Non-Rotasi)
+          </div>
+          <h3 class="font-display text-xl font-bold text-white">Radius Schwarzschild ($r_s$)</h3>
+          <div class="p-4 rounded-2xl bg-black/55 border border-white/10 text-center">
+            $$r_s = \\frac{2GM}{c^2}$$
+          </div>
+          <div class="text-xs text-slate-300 space-y-1 bg-white/[0.03] p-3.5 rounded-2xl border border-white/10 font-mono">
+            <div>• $G = 6,6743 \\times 10^{-11}\\;\\text{m}^3\\,\\text{kg}^{-1}\\,\\text{s}^{-2}$</div>
+            <div>• $c = 2,9979 \\times 10^8\\;\\text{m/s}$</div>
+            <div>• $M = \\text{Massa objek } (1\\,M_\\odot = 1,9885 \\times 10^{30}\\;\\text{kg})$</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-300 font-medium">Massa Black Hole ($M$)</span>
+              <span id="rs-mass-label" class="font-mono text-amber-300 font-bold">10 M☉</span>
+            </div>
+            <input type="range" min="1" max="100" step="1" value="${state.bhMassSolar}" oninput="onRsSliderChange(this.value)">
+            <div class="flex flex-wrap gap-1.5 mt-3">
+              <button onclick="setRsPreset(3)" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-amber-500/25 text-[11px] font-mono">3 M☉ (Minimal)</button>
+              <button onclick="setRsPreset(21)" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-amber-500/25 text-[11px] font-mono">21 M☉ (Cygnus X-1)</button>
+              <button onclick="setRsPreset(4300000)" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-amber-500/25 text-[11px] font-mono">4,3×10⁶ M☉ (Sgr A*)</button>
+              <button onclick="setRsPreset(6500000000)" class="px-2.5 py-1 rounded-lg bg-white/10 hover:bg-amber-500/25 text-[11px] font-mono">6,5×10⁹ M☉ (M87*)</button>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-black/60 border border-amber-500/30 space-y-1">
+            <div class="text-[11px] font-mono text-slate-400">HASIL PERHITUNGAN OTOMATIS</div>
+            <div id="rs-result-km" class="font-display text-2xl font-bold text-amber-300">29,53 km</div>
+            <div id="rs-result-au" class="font-mono text-xs text-slate-300">Diameter Horizon: 59,06 km</div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <h4 class="font-display text-base font-bold text-white mb-1">Visualisasi Skala Radius Schwarzschild</h4>
+            <p class="text-xs text-slate-400 mb-4">Perbandingan proporsional radius event horizon terhadap skala objek astronomi.</p>
+            <div class="bg-black/50 rounded-2xl border border-white/10 p-4 flex items-center justify-center">
+              <svg id="svg-schwarzschild" viewBox="0 0 520 260" class="w-full h-60"></svg>
+            </div>
+          </div>
+          <div id="rs-interpretation" class="mt-4 p-4 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs sm:text-sm text-slate-200 leading-relaxed">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (state.physicsTab === 'timedilation') {
+    return `
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-6 space-y-4">
+          <div class="inline-flex px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[11px] font-mono">
+            Batas Keberlakuan: Pengamat Statis di Luar Horizon ($r &gt; r_s$)
+          </div>
+          <h3 class="font-display text-xl font-bold text-white">Dilatasi Waktu Gravitasi</h3>
+          <div class="p-4 rounded-2xl bg-black/55 border border-white/10 text-center">
+            $$\\Delta t = \\frac{\\Delta\\tau}{\\sqrt{1 - \\frac{2GM}{rc^2}}} = \\frac{\\Delta\\tau}{\\sqrt{1 - \\frac{r_s}{r}}}$$
+          </div>
+          <div class="text-xs text-slate-300 space-y-1 bg-white/[0.03] p-3.5 rounded-2xl border border-white/10 font-mono">
+            <div>• $\\Delta\\tau = \\text{Interval waktu sejati pengamat dekat } (r)$</div>
+            <div>• $\\Delta t = \\text{Interval waktu pengamat sangat jauh } (r \\rightarrow \\infty)$</div>
+            <div>• $r / r_s = \\text{Jarak radial dalam satuan radius Schwarzschild}$</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-300 font-medium">Jarak Radial Pengamat ($r / r_s$)</span>
+              <span id="td-ratio-label" class="font-mono text-amber-300 font-bold">${state.tdRatio.toFixed(2)} rₛ</span>
+            </div>
+            <input type="range" min="1.01" max="10.0" step="0.01" value="${state.tdRatio}" oninput="onTdSliderChange(this.value)">
+            <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+              <span>1,01 rₛ (Sangat dekat horizon)</span>
+              <span>1,50 rₛ (Photon sphere)</span>
+              <span>10,0 rₛ (Medan lemah)</span>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-2xl bg-black/60 border border-amber-500/30 space-y-1">
+            <div class="text-[11px] font-mono text-slate-400">FAKTOR DILATASI WAKTU ($\\Delta t / \\Delta\\tau$)</div>
+            <div id="td-factor-result" class="font-display text-2xl font-bold text-amber-300">1,73 ×</div>
+            <div id="td-clock-compare" class="font-mono text-xs text-slate-300">1 jam di dekat black hole = 1,73 jam di Bumi</div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <h4 class="font-display text-base font-bold text-white mb-1">Simulasi Perbandingan Laju Dua Jam Atom</h4>
+            <p class="text-xs text-slate-400 mb-4">Perbandingan laju detak waktu sejati ($\tau$) di sekitar sumur gravitasi versus waktu koordinat pengamat jauh ($t$).</p>
+            <div class="bg-black/50 rounded-2xl border border-white/10 p-4">
+              <canvas id="canvas-timedilation" class="w-full h-56 block"></canvas>
+            </div>
+          </div>
+          <div id="td-interpretation" class="mt-4 p-4 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs sm:text-sm text-slate-200 leading-relaxed">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (state.physicsTab === 'lensing') {
+    return `
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-6 space-y-4">
+          <div class="inline-flex px-2.5 py-0.5 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[11px] font-mono">
+            Integrasi Geodesik Null Schwarzschild &amp; Batas Tangkapan
+          </div>
+          <h3 class="font-display text-xl font-bold text-white">Pelensaan Gravitasi (Gravitational Lensing)</h3>
+          <div class="p-4 rounded-2xl bg-black/55 border border-white/10 text-center">
+            $$\\alpha = 2\\int_{r_0}^{\\infty} \\frac{b\\,dr}{r^2\\sqrt{1-\\left(1-\\frac{r_s}{r}\\right)\\frac{b^2}{r^2}}}-\\pi$$
+            <div class="text-[11px] text-slate-400 mt-2">Integral geodesik null Schwarzschild; $r_0$ ditentukan dari kondisi titik balik.</div>
+          </div>
+          <div class="text-xs text-slate-300 space-y-1 bg-white/[0.03] p-3.5 rounded-2xl border border-white/10 font-mono">
+            <div>• $\\alpha = \\text{Sudut pembelokan sinar cahaya (radian / derajat)}$</div>
+            <div>• $b = \\text{Parameter dampak (besaran kekekalan terkait momentum sudut per energi foton)}$</div>
+            <div>• $b_{\\text{crit}} = \\frac{3\\sqrt{3}}{2}r_s \\approx 2,60\\,r_s \\; (\\text{batas foton tertangkap})$</div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs mb-1.5">
+              <span class="text-slate-300 font-medium">Parameter Dampak Sinar ($b / r_s$)</span>
+              <span id="lens-b-label" class="font-mono text-amber-300 font-bold">${state.lensImpactB.toFixed(2)} rₛ</span>
+            </div>
+            <input type="range" min="2.2" max="15.0" step="0.1" value="${state.lensImpactB}" oninput="onLensSliderChange(this.value)">
+          </div>
+
+          <div class="p-4 rounded-2xl bg-black/60 border border-amber-500/30 space-y-1">
+            <div class="text-[11px] font-mono text-slate-400">SUDUT DEFLEKSI CAHAYA</div>
+            <div id="lens-angle-result" class="font-display text-2xl font-bold text-amber-300">Menghitung…</div>
+            <div id="lens-status-note" class="font-mono text-xs text-sky-300">Hasil model Schwarzschild akan ditampilkan.</div>
+          </div>
+        </div>
+
+        <div class="lg:col-span-7 hud-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <h4 class="font-display text-base font-bold text-white mb-1">Skema Geometri Pelensaan Foton (Ilustratif)</h4>
+            <p class="text-xs text-slate-400 mb-4">Diagram ini hanya skema konseptual posisi sumber, black hole, dan pengamat; kurva SVG bukan lintasan hasil integrasi geodesik. Pembentukan cincin Einstein bergantung pada geometri sumber-lensa-pengamat.</p>
+            <div class="bg-black/50 rounded-2xl border border-white/10 p-4">
+              <svg id="svg-lensing" viewBox="0 0 540 250" class="w-full h-60"></svg>
+            </div>
+          </div>
+          <div id="lens-interpretation" class="mt-4 p-4 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs sm:text-sm text-slate-200 leading-relaxed">
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if (state.physicsTab === 'kerr') {
+    return `
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-6 space-y-4">
+          <div class="inline-flex px-2.5 py-1 rounded-full bg-sky-500/15 border border-sky-500/30 text-sky-300 text-[11px] font-mono">SOLUSI KERR • BESARAN ANALITIS</div>
+          <h3 class="font-display text-xl font-bold text-white">Geometri Black Hole Berotasi</h3>
+          <p class="text-xs text-slate-300 leading-relaxed">Atur parameter spin tak berdimensi $a_* = cJ/(GM^2)$. Perhitungan berikut memakai solusi Kerr ideal untuk black hole terisolasi, stasioner, dan aksisimetris.</p>
+          <div>
+            <div class="flex justify-between text-xs mb-2">
+              <label for="kerr-spin-slider" class="text-slate-300 font-medium">Parameter spin Kerr ($a_*$)</label>
+              <span id="kerr-spin-label" class="font-mono text-amber-300 font-bold">${state.kerrSpin.toFixed(3)}</span>
+            </div>
+            <input id="kerr-spin-slider" type="range" min="0" max="0.998" step="0.001" value="${state.kerrSpin}" oninput="onKerrSpinChange(this.value)" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500"><span>0 • Schwarzschild</span><span>0,998 • spin tinggi</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3 rounded-xl bg-black/50 border border-white/10">
+              <div class="text-[10px] text-slate-400 font-mono">HORIZON LUAR r₊</div>
+              <div id="kerr-rplus" class="text-xl font-bold text-amber-300">—</div>
+              <div class="text-[10px] text-slate-500">dalam satuan GM/c²</div>
+            </div>
+            <div class="p-3 rounded-xl bg-black/50 border border-white/10">
+              <div class="text-[10px] text-slate-400 font-mono">HORIZON DALAM r₋</div>
+              <div id="kerr-rminus" class="text-xl font-bold text-sky-300">—</div>
+              <div class="text-[10px] text-slate-500">dalam satuan GM/c²</div>
+            </div>
+            <div class="p-3 rounded-xl bg-black/50 border border-white/10">
+              <div class="text-[10px] text-slate-400 font-mono">ISCO PROGRADE</div>
+              <div id="kerr-isco-pro" class="text-xl font-bold text-emerald-300">—</div>
+              <div class="text-[10px] text-slate-500">orbit searah rotasi, r/M</div>
+            </div>
+            <div class="p-3 rounded-xl bg-black/50 border border-white/10">
+              <div class="text-[10px] text-slate-400 font-mono">ISCO RETROGRADE</div>
+              <div id="kerr-isco-retro" class="text-xl font-bold text-violet-300">—</div>
+              <div class="text-[10px] text-slate-500">orbit berlawanan, r/M</div>
+            </div>
+          </div>
+          <div class="p-3 rounded-xl bg-black/50 border border-white/10 space-y-1">
+            <div class="text-[10px] font-mono text-slate-400">ERGOSFER DI EKUATOR</div>
+            <div id="kerr-ergo" class="text-lg font-bold text-orange-300">—</div>
+            <div class="text-[10px] text-slate-500">Batas luar ergosfer ekuatorial = 2 GM/c² untuk semua spin Kerr.</div>
+          </div>
+        </div>
+        <div class="lg:col-span-7 hud-panel rounded-3xl p-6 space-y-4">
+          <h4 class="font-display text-lg font-bold text-white">Bagaimana rotasi mengubah geometri?</h4>
+          <div class="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2">
+            <div class="text-xs text-slate-300">Horizon luar dan dalam</div>
+            $$r_{\\pm}=\\frac{GM}{c^2}\\left(1\\pm\\sqrt{1-a_*^2}\\right)$$
+            <div class="text-xs text-slate-400">Kedua horizon menyatu pada limit ekstremal ideal $a_*=1$. Slider dibatasi pada 0,998 untuk menghindari penyajian limit ekstremal sebagai keadaan astrofisika generik.</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2">
+            <div class="text-xs text-slate-300">Radius ergosfer bergantung pada lintang</div>
+            $$r_{\\rm ergo}(\\theta)=\\frac{GM}{c^2}\\left(1+\\sqrt{1-a_*^2\\cos^2\\theta}\\right)$$
+            <div class="text-xs text-slate-400">Di kutub, batas ergosfer bertemu horizon luar; di ekuator, batasnya berada pada $2GM/c^2$.</div>
+          </div>
+          <div class="p-4 rounded-2xl bg-black/50 border border-white/10 space-y-2">
+            <div class="text-xs text-slate-300">Orbit foton melingkar ekuatorial</div>
+            <div id="kerr-photon-results" class="text-sm text-slate-100 font-mono">—</div>
+            <div class="text-xs text-slate-400">Orbit prograde dan retrograde memiliki radius berbeda. Rumus ini hanya untuk orbit foton melingkar ekuatorial.</div>
+          </div>
+          <div id="kerr-interpretation" class="p-4 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs sm:text-sm text-slate-200 leading-relaxed"></div>
+          <div class="p-3 rounded-xl bg-amber-500/10 border border-amber-400/25 text-xs text-amber-100 leading-relaxed">
+            <strong>Batas model:</strong> Modul ini menghitung besaran geometri Kerr analitis. Ini belum merupakan integrator geodesik null Kerr dan belum mengubah lintasan foton pada shader 3D. Visualisasi Kerr penuh memerlukan integrasi persamaan Hamilton–Jacobi/geodesik beserta konstanta Carter.
+          </div>
+          <div class="p-4 rounded-2xl bg-black/45 border border-emerald-400/20 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <h4 class="font-display text-base font-bold text-white">Lintasan Foton Ekuatorial Kerr</h4>
+              <span class="text-[10px] font-mono text-emerald-300 border border-emerald-400/30 rounded-full px-2 py-1">INTEGRASI NUMERIK CPU</span>
+            </div>
+            <p class="text-xs text-slate-300 leading-relaxed">Eksperimen ini menghitung pembelokan foton yang datang dari jauh dan bergerak pada bidang ekuator (konstanta Carter $Q=0$). Arah positif parameter tumbukan berarti searah spin.</p>
+            <div class="flex justify-between text-xs"><label for="kerr-impact-slider" class="text-slate-300">Parameter tumbukan $b/M$</label><span id="kerr-impact-label" class="font-mono text-emerald-300">6.000</span></div>
+            <input id="kerr-impact-slider" type="range" min="2.2" max="12" step="0.01" value="6" oninput="onKerrImpactChange(this.value)" class="w-full">
+            <div class="flex justify-between text-[10px] text-slate-500"><span>2,2 M</span><span>12 M</span></div>
+            <div id="kerr-ray-result" class="rounded-xl bg-slate-950/80 border border-white/10 p-3 text-xs text-slate-200 leading-relaxed" aria-live="polite">Menghitung lintasan…</div>
+            <div class="text-[10px] text-slate-500 leading-relaxed">Model: geodesik null Kerr ekuatorial, $E=1$, $Q=0$, satuan $G=c=M=1$. Bukan ray-tracing 3D; tidak memodelkan foton non-ekuatorial, piringan akresi, atau citra kamera.</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  // Hawking Temperature Tab
+  return `
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div class="lg:col-span-5 hud-panel-amber rounded-3xl p-6 space-y-4">
+        <div class="inline-flex px-2.5 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 text-[11px] font-mono">
+          ● PREDIKSI TEORETIS (Belum Terdeteksi Langsung Secara Astrofisika)
+        </div>
+        <h3 class="font-display text-xl font-bold text-white">Temperatur Radiasi Hawking ($T_H$)</h3>
+        <div class="p-4 rounded-2xl bg-black/55 border border-white/10 text-center">
+          $$T_H = \\frac{\\hbar c^3}{8\\pi G M k_B}$$
+        </div>
+        <div class="text-xs text-slate-300 space-y-1 bg-white/[0.03] p-3.5 rounded-2xl border border-white/10 font-mono">
+          <div>• $\\hbar = 1,0546 \\times 10^{-34}\\;\\text{J}\\cdot\\text{s} \\; (\\text{konstanta Planck tereduksi})$</div>
+          <div>• $k_B = 1,3806 \\times 10^{-23}\\;\\text{J/K} \\; (\\text{konstanta Boltzmann})$</div>
+          <div>• $T_H \\propto 1/M \\; (\\text{semakin masif, semakin dingin})$</div>
+        </div>
+
+        <div>
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-300 font-medium">Skala Massa Logaritmik ($10^x\\,M_\\odot$)</span>
+            <span id="hawking-mass-label" class="font-mono text-amber-300 font-bold">10⁰ M☉ (1 M☉)</span>
+          </div>
+          <input type="range" min="-18" max="9" step="0.5" value="${state.hawkingMassExp}" oninput="onHawkingSliderChange(this.value)">
+          <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+            <span>10⁻¹⁸ M☉ (Mikro)</span>
+            <span>10⁰ M☉ (Stellar)</span>
+            <span>10⁹ M☉ (Supermasif)</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-2xl bg-black/60 border border-amber-500/30 space-y-1">
+          <div class="text-[11px] font-mono text-slate-400">TEMPERATUR HAWKING TERHITUNG</div>
+          <div id="hawking-temp-result" class="font-display text-2xl font-bold text-amber-300">6,17 × 10⁻⁸ K</div>
+          <div id="hawking-cmb-compare" class="font-mono text-xs text-sky-300">Suhu CMB Alam Semesta = 2,725 K</div>
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 hud-panel rounded-3xl p-6 flex flex-col justify-between">
+        <div>
+          <h4 class="font-display text-base font-bold text-white mb-1">Kurva Hubungan Terbalik Massa vs Temperatur Hawking</h4>
+          <p class="text-xs text-slate-400 mb-4">Garis putus-putus biru menunjukkan suhu Radiasi Latar Belakang Gelombang Mikro Kosmik (CMB = 2,725 K).</p>
+          <div class="bg-black/50 rounded-2xl border border-white/10 p-4">
+            <svg id="svg-hawking" viewBox="0 0 540 245" class="w-full h-56"></svg>
+          </div>
+        </div>
+        <div id="hawking-interpretation" class="mt-4 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs sm:text-sm text-slate-200 leading-relaxed">
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Physics Interactive Handlers & Live Calculations
+let tdAnimFrame = null;
+
+// Exact Schwarzschild light deflection from the null-geodesic integral.
+// Units: r_s = 1, so M = 1/2. Input b is the impact parameter in r_s units.
+// Returns null at/below the capture threshold; otherwise returns the closest
+// approach radius and total deflection angle (radians). Simpson integration is
+// performed after x = 1 - t^2 removes the integrable turning-point singularity.
+function solveSchwarzschildNullGeodesic(b, intervals = 1600) {
+  const bCritical = (3 * Math.sqrt(3)) / 2;
+  if (!Number.isFinite(b) || b <= bCritical) return null;
+  if (intervals < 2) intervals = 2;
+  if (intervals % 2) intervals += 1;
+
+  const impactAtRadius = (r) => r / Math.sqrt(1 - 1 / r);
+  let lo = 1.5;
+  let hi = Math.max(b, 2.0);
+  while (impactAtRadius(hi) < b) hi *= 2;
+  for (let i = 0; i < 90; i++) {
+    const mid = 0.5 * (lo + hi);
+    if (impactAtRadius(mid) < b) lo = mid;
+    else hi = mid;
+  }
+
+  const r0 = 0.5 * (lo + hi);
+  const q = b / r0;
+  const k = 1 / r0;
+  const integrand = (t) => {
+    if (t === 0) return 2 / Math.sqrt(2 - 3 * k);
+    const x = 1 - t * t;
+    const radicand = 1 - q * q * x * x * (1 - k * x);
+    return (2 * q * t) / Math.sqrt(Math.max(radicand, 1e-30));
+  };
+
+  const h = 1 / intervals;
+  let sum = integrand(0) + integrand(1);
+  for (let i = 1; i < intervals; i++) {
+    sum += (i % 2 === 0 ? 2 : 4) * integrand(i * h);
+  }
+  const halfOrbitAngle = (h / 3) * sum;
+  return { closestApproachRs: r0, deflectionRad: 2 * halfOrbitAngle - Math.PI };
+}
+
+// Analytic Kerr geometry in dimensionless units G = c = M = 1.
+// aStar = a/M = cJ/(GM^2), 0 <= aStar < 1.
+function calculateKerrGeometry(aStar) {
+  const a = Math.max(0, Math.min(0.998999999, Number(aStar)));
+  const root = Math.sqrt(1 - a * a);
+  const rPlus = 1 + root;
+  const rMinus = 1 - root;
+  const z1 = 1 + Math.cbrt(1 - a * a) * (Math.cbrt(1 + a) + Math.cbrt(1 - a));
+  const z2 = Math.sqrt(3 * a * a + z1 * z1);
+  const rIscoPro = 3 + z2 - Math.sqrt((3 - z1) * (3 + z1 + 2 * z2));
+  const rIscoRetro = 3 + z2 + Math.sqrt((3 - z1) * (3 + z1 + 2 * z2));
+  const rPhotonPro = 2 * (1 + Math.cos((2 / 3) * Math.acos(-a)));
+  const rPhotonRetro = 2 * (1 + Math.cos((2 / 3) * Math.acos(a)));
+  return { aStar: a, rPlus, rMinus, rErgoEquator: 2, rIscoPro, rIscoRetro, rPhotonPro, rPhotonRetro };
+}
+
+// Equatorial (Q=0) Kerr null-geodesic scattering in G=c=M=E=1 units.
+// Uses the separated radial potential R=[r^2+a^2-ab]^2-Delta(b-a)^2 and
+// dphi/dr=[(b-a)+aP/Delta]/sqrt(R). This is a CPU reference calculator,
+// not the 3D shader's camera ray tracer.
+function solveEquatorialKerrRay(aStar, impactB, intervals = 1600) {
+  const a = Math.max(0, Math.min(0.998999, Number(aStar)));
+  const b = Number(impactB);
+  if (!Number.isFinite(b) || Math.abs(b) < 1e-8) return { captured: true, reason: 'Parameter tumbukan tidak valid.' };
+  const rPlus = 1 + Math.sqrt(1 - a * a);
+  const delta = r => r * r - 2 * r + a * a;
+  const radial = r => {
+    const P = r * r + a * a - a * b;
+    return P * P - delta(r) * (b - a) * (b - a);
+  };
+  // Locate the outermost turning point by scanning inward from large radius.
+  let rHigh = Math.max(80, 12 * Math.abs(b) + 20);
+  let fHigh = radial(rHigh);
+  let rLow = rHigh;
+  let fLow = fHigh;
+  let bracketed = false;
+  const scanStep = (rHigh - rPlus - 1e-7) / 2400;
+  for (let i = 0; i < 2400; i++) {
+    rLow = rHigh - scanStep;
+    fLow = radial(rLow);
+    if (fLow <= 0 && fHigh >= 0) { bracketed = true; break; }
+    rHigh = rLow;
+    fHigh = fLow;
+  }
+  if (!bracketed) return { captured: true, reason: 'Tidak ditemukan titik balik di luar horizon: foton tertangkap atau parameter tumbukan berada di bawah ambang hamburan.' };
+  // Bisection on the outer turning point.
+  for (let i = 0; i < 90; i++) {
+    const mid = 0.5 * (rLow + rHigh);
+    if (radial(mid) > 0) rHigh = mid; else rLow = mid;
+  }
+  const r0 = 0.5 * (rLow + rHigh);
+  // Substitute r=r0/(1-t^2), t in [0,1], to regularize the square-root
+  // endpoint at periapsis and map infinity to t=1.
+  const integrand = t => {
+    if (t < 1e-8) {
+      const eps = Math.max(1e-7, r0 * 1e-7);
+      const derivative = (radial(r0 + eps) - radial(r0 + eps * 0.25)) / (eps * 0.75);
+      const P0 = r0 * r0 + a * a - a * b;
+      const N0 = (b - a) + a * P0 / delta(r0);
+      return 2 * r0 * N0 / Math.sqrt(Math.max(derivative * r0, 1e-28));
+    }
+    const x = 1 - t * t;
+    if (x < 1e-7) return 2 * t * b / r0;
+    const r = r0 / x;
+    const D = delta(r);
+    const P = r * r + a * a - a * b;
+    const R = Math.max(0, P * P - D * (b - a) * (b - a));
+    const numerator = (b - a) + a * P / D;
+    const value = numerator / Math.sqrt(Math.max(R, 1e-28)) * (2 * r0 * t / (x * x));
+    return Number.isFinite(value) ? value : 0;
+  };
+  const n = intervals % 2 === 0 ? intervals : intervals + 1;
+  const h = 1 / n;
+  let sum = integrand(0) + integrand(1);
+  for (let i = 1; i < n; i++) sum += (i % 2 ? 4 : 2) * integrand(i * h);
+  const halfAzimuth = sum * h / 3;
+  const signedDeflection = 2 * halfAzimuth - Math.PI;
+  return { captured: false, closestApproachM: r0, deflectionRad: signedDeflection, deflectionDeg: signedDeflection * 180 / Math.PI };
+}
+
+function updateKerrRayCalculator() {
+  const bEl = document.getElementById('kerr-impact-slider');
+  const result = document.getElementById('kerr-ray-result');
+  const label = document.getElementById('kerr-impact-label');
+  if (!bEl || !result) return;
+  const b = Number(bEl.value);
+  if (label) label.textContent = b.toFixed(3);
+  const ray = solveEquatorialKerrRay(state.kerrSpin, b);
+  if (ray.captured) {
+    result.innerHTML = `<strong class="text-rose-300">Tidak ada lintasan hamburan.</strong><br>${ray.reason} Coba naikkan $b/M$.`;
+  } else {
+    const direction = ray.deflectionDeg >= 0 ? 'positif' : 'negatif';
+    result.innerHTML = `<strong class="text-emerald-300">Titik balik terdekat:</strong> $r_0=${ray.closestApproachM.toFixed(5)}\,M$<br><strong class="text-emerald-300">Defleksi azimut bertanda:</strong> $\\Delta\\phi=${ray.deflectionDeg.toFixed(5)}^\\circ$ (${direction})<br><span class="text-slate-400">Hasil berubah terhadap spin $a_*=${state.kerrSpin.toFixed(3)}$ dan $b/M=${b.toFixed(3)}$.</span>`;
+  }
+}
+
+function updateKerrCalculator() {
+  const g = calculateKerrGeometry(state.kerrSpin);
+  updateKerrRayCalculator();
+  const set = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  };
+  set('kerr-spin-label', g.aStar.toFixed(3));
+  set('kerr-rplus', g.rPlus.toFixed(5));
+  set('kerr-rminus', g.rMinus.toFixed(5));
+  set('kerr-isco-pro', g.rIscoPro.toFixed(5));
+  set('kerr-isco-retro', g.rIscoRetro.toFixed(5));
+  set('kerr-ergo', '2,00000 GM/c²');
+  set('kerr-photon-results',
+    `Prograde: ${g.rPhotonPro.toFixed(5)} GM/c²<br>Retrograde: ${g.rPhotonRetro.toFixed(5)} GM/c²`);
+  const interp = document.getElementById('kerr-interpretation');
+  if (interp) {
+    const delta = (g.rIscoRetro - g.rIscoPro).toFixed(3);
+    interp.innerHTML = `<strong>Interpretasi:</strong> Pada $a_*=${g.aStar.toFixed(3)}$, horizon luar berada pada $r_+=${g.rPlus.toFixed(4)}\\,GM/c^2$. ISCO prograde berada pada $${g.rIscoPro.toFixed(4)}\\,GM/c^2$, sedangkan ISCO retrograde pada $${g.rIscoRetro.toFixed(4)}\\,GM/c^2$. Selisih keduanya sekitar $${delta}\\,GM/c^2$. Rotasi memecah simetri antara orbit searah dan berlawanan arah terhadap spin black hole.`;
+  }
+}
+
+function updatePhysicsCalculations() {
+  if (tdAnimFrame) {
+    cancelAnimationFrame(tdAnimFrame);
+    tdAnimFrame = null;
+  }
+
+  if (state.physicsTab === 'schwarzschild') {
+    const M = state.bhMassSolar;
+    // r_s for 1 Solar Mass = 2.95325 km
+    const rsKm = M * 2.95325;
+    const labelEl = document.getElementById('rs-mass-label');
+    const kmEl = document.getElementById('rs-result-km');
+    const auEl = document.getElementById('rs-result-au');
+    const interpEl = document.getElementById('rs-interpretation');
+    const svg = document.getElementById('svg-schwarzschild');
+
+    if (labelEl) labelEl.textContent = M >= 1e6 ? `${(M / 1e6).toFixed(2)} Juta M☉` : `${M.toLocaleString('id-ID')} M☉`;
+    if (kmEl) {
+      if (rsKm >= 1.496e8) {
+        kmEl.textContent = `${(rsKm / 1.496e8).toFixed(2)} AU (${rsKm.toExponential(2)} km)`;
+      } else {
+        kmEl.textContent = `${rsKm.toLocaleString('id-ID', { maximumFractionDigits: 2 })} km`;
+      }
+    }
+    if (auEl) auEl.textContent = `Diameter Event Horizon: ${(rsKm * 2).toLocaleString('id-ID', { maximumFractionDigits: 2 })} km`;
+
+    if (interpEl) {
+      let context = '';
+      if (M <= 30) {
+        context = `Black hole bermassa bintang ${M} M☉ memiliki radius Schwarzschild ${rsKm.toFixed(1)} km—seukuran sebuah kota besar di Bumi, namun menyimpan massa ${M} kali lebih berat daripada seluruh Matahari.`;
+      } else if (M <= 100) {
+        context = `Dengan massa ${M} M☉ (setara sisa penggabungan black hole yang terdeteksi oleh LIGO), radius event horizon mencapai ${rsKm.toFixed(1)} km.`;
+      } else if (M < 1e8) {
+        context = `Ini setara dengan Sagittarius A* di pusat galaksi Bima Sakti. Radius horizonnya ~12,7 juta km (sekitar 18 kali radius Matahari, masih muat di dalam orbit planet Merkurius).`;
+      } else {
+        context = `Black hole supermasif raksasa seperti M87* (6,5 miliar M☉) memiliki radius Schwarzschild ~19,2 miliar km (~128 AU), lebih luas daripada seluruh orbit planet Tata Surya hingga melampaui sabuk Kuiper!`;
+      }
+      interpEl.innerHTML = `<strong>Interpretasi Fisis:</strong> ${context}`;
+    }
+
+    if (svg) {
+      const visualR = Math.min(95, Math.max(18, 18 + Math.log10(M) * 8));
+      svg.innerHTML = `
+        <defs>
+          <radialGradient id="bhGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="65%" stop-color="#000000"/>
+            <stop offset="92%" stop-color="#090d16"/>
+            <stop offset="100%" stop-color="#F59E0B"/>
+          </radialGradient>
+        </defs>
+        <line x1="40" y1="225" x2="480" y2="225" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+        <!-- Photon sphere dashed ring -->
+        <circle cx="260" cy="120" r="${visualR * 1.5}" fill="none" stroke="rgba(56,189,248,0.45)" stroke-width="1.2" stroke-dasharray="4 4"/>
+        <!-- Shadow dashed ring -->
+        <circle cx="260" cy="120" r="${Math.min(115, visualR * 1.9)}" fill="none" stroke="rgba(245,158,11,0.28)" stroke-width="1" stroke-dasharray="2 3"/>
+        <!-- Event horizon sphere -->
+        <circle cx="260" cy="120" r="${visualR}" fill="url(#bhGrad)" stroke="#F59E0B" stroke-width="2"/>
+        <!-- Radius vector -->
+        <line x1="260" y1="120" x2="${260 + visualR}" y2="120" stroke="#38BDF8" stroke-width="2"/>
+        <circle cx="260" cy="120" r="3" fill="#38BDF8"/>
+        <text x="${260 + visualR + 8}" y="124" fill="#FBBF24" font-size="11" font-family="JetBrains Mono">rₛ = ${rsKm >= 1e6 ? rsKm.toExponential(2) : rsKm.toFixed(1)} km</text>
+        <text x="260" y="${120 - visualR * 1.5 - 6}" text-anchor="middle" fill="#38BDF8" font-size="10" font-family="JetBrains Mono">Photon Sphere (1,5 rₛ)</text>
+      `;
+    }
+  } else if (state.physicsTab === 'timedilation') {
+    const ratio = state.tdRatio; // r / r_s
+    const factor = 1 / Math.sqrt(1 - 1 / ratio);
+    document.getElementById('td-ratio-label').textContent = `${ratio.toFixed(2)} rₛ`;
+    document.getElementById('td-factor-result').textContent = `${factor.toFixed(2)} × lebih lambat`;
+    document.getElementById('td-clock-compare').textContent = `1,00 jam waktu sejati (Δτ) = ${factor.toFixed(2)} jam waktu pengamat jauh (Δt)`;
+    document.getElementById('td-interpretation').innerHTML = `<strong>Interpretasi Fisis:</strong> Pada jarak $r = ${ratio.toFixed(2)}\\,r_s$, setiap 1 detik yang dialami astronot di dekat black hole setara dengan <strong>${factor.toFixed(2)} detik</strong> bagi pengamat jauh. Jika pengamat mendekati $r \\rightarrow 1,00\\,r_s$, sinyal cahaya yang dipancarkan mengalami pergeseran merah gravitasi tak hingga sehingga pengamat jauh melihat jam tersebut tampak membeku di tepi horizon.`;
+
+    const canvas = document.getElementById('canvas-timedilation');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      canvas.width = canvas.clientWidth * 2;
+      canvas.height = canvas.clientHeight * 2;
+      let start = performance.now();
+
+      function drawClocks(now) {
+        if (state.activeModule !== 'physics' || state.physicsTab !== 'timedilation') return;
+        const dtSec = (now - start) / 1000;
+        const f = 1 / Math.sqrt(1 - 1 / state.tdRatio);
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const w = canvas.width;
+        const h = canvas.height;
+
+        // Left Clock: Distant Observer (Coordinate Time t)
+        const cx1 = w * 0.28, cy = h * 0.5, rad = Math.min(w * 0.16, h * 0.34);
+        drawAnalogClock(ctx, cx1, cy, rad, dtSec * 1.2, '#38BDF8', 'PENGAMAT JAUH (Δt)', `${(dtSec * 1.2).toFixed(1)} s`);
+
+        // Right Clock: Near Black Hole (Proper Time tau = t / f)
+        const cx2 = w * 0.72;
+        drawAnalogClock(ctx, cx2, cy, rad, (dtSec * 1.2) / f, '#F59E0B', `DEKAT HORIZON (${state.tdRatio.toFixed(2)} rₛ)`, `${((dtSec * 1.2) / f).toFixed(1)} s`);
+
+        tdAnimFrame = requestAnimationFrame(drawClocks);
+      }
+      tdAnimFrame = requestAnimationFrame(drawClocks);
+    }
+  } else if (state.physicsTab === 'lensing') {
+    const b = state.lensImpactB; // impact parameter in units of r_s
+    const bCritical = (3 * Math.sqrt(3)) / 2;
+    const captured = b <= bCritical;
+    const geodesic = captured ? null : solveSchwarzschildNullGeodesic(b);
+    const alphaRad = geodesic ? geodesic.deflectionRad : 0;
+    const alphaDeg = alphaRad * 180 / Math.PI;
+
+    document.getElementById('lens-b-label').textContent = `${b.toFixed(2)} rₛ`;
+    document.getElementById('lens-angle-result').textContent = captured
+      ? 'TERTANGKAP / KRITIS'
+      : `${alphaDeg.toFixed(2)}° (geodesik)`;
+    document.getElementById('lens-status-note').textContent = captured
+      ? 'Schwarzschild: b ≤ 3√3/2 rₛ. Pada nilai kritis, foton mendekati orbit melingkar tak stabil; di bawahnya foton tertangkap.'
+      : `Sudut dihitung dari integral geodesik null Schwarzschild; r₀ ≈ ${geodesic.closestApproachRs.toFixed(3)} rₛ.`;
+    document.getElementById('lens-interpretation').innerHTML = captured
+      ? `<strong>Interpretasi Schwarzschild:</strong> $b = ${b.toFixed(2)}\\,r_s$ tidak melebihi $b_{\\text{crit}} = 3\\sqrt{3}r_s/2 \\approx 2,598\\,r_s$. Pada ambang kritis, lintasan mendekati orbit foton tak stabil; untuk nilai yang lebih kecil, foton dari tak hingga tidak kembali ke tak hingga.`
+      : `<strong>Hasil integrasi geodesik null Schwarzschild:</strong> Untuk $b = ${b.toFixed(2)}\\,r_s$, jarak titik balik terdekat adalah $r_0 \\approx ${geodesic.closestApproachRs.toFixed(3)}\\,r_s$ dan sudut defleksi total $\\alpha \\approx ${alphaDeg.toFixed(3)}^\\circ$. Nilai ini berasal dari integrasi numerik lintasan foton pada geometri Schwarzschild, bukan pendekatan medan lemah. Model ini mengasumsikan sumber dan pengamat berada sangat jauh serta tidak mencakup rotasi Kerr.`;
+    const svg = document.getElementById('svg-lensing');
+    if (svg) {
+      const cy = 125;
+      const bhX = 270;
+      const bPx = Math.min(95, b * 6.8);
+      const bendPx = captured ? 0 : Math.min(85, alphaRad * 95);
+
+      svg.innerHTML = `
+        <!-- Optical axis -->
+        <line x1="20" y1="${cy}" x2="520" y2="${cy}" stroke="rgba(255,255,255,0.12)" stroke-dasharray="4 4"/>
+        <!-- Critical capture zone -->
+        <circle cx="${bhX}" cy="${cy}" r="18" fill="none" stroke="rgba(244,63,94,0.45)" stroke-dasharray="2 2"/>
+        <!-- Black hole -->
+        <circle cx="${bhX}" cy="${cy}" r="11" fill="#000000" stroke="#F59E0B" stroke-width="2"/>
+        <text x="${bhX}" y="${cy + 30}" text-anchor="middle" fill="#FBBF24" font-size="10" font-family="JetBrains Mono">Black Hole</text>
+
+        <!-- Background Star -->
+        <circle cx="50" cy="${cy - bPx}" r="5" fill="#38BDF8"/>
+        <text x="50" y="${cy - bPx - 10}" text-anchor="middle" fill="#38BDF8" font-size="10" font-family="Inter">Bintang Latar</text>
+
+        <!-- Observer -->
+        <circle cx="495" cy="${cy}" r="5" fill="#10B981"/>
+        <text x="495" y="${cy - 12}" text-anchor="middle" fill="#34D399" font-size="10" font-family="Inter">Pengamat</text>
+
+        ${captured
+          ? `<path d="M 50 ${cy - bPx} Q ${bhX - 20} ${cy - bPx * 0.8}, ${bhX} ${cy}" fill="none" stroke="#FB7185" stroke-width="2.2"/>
+             <text x="${bhX + 22}" y="${cy - 18}" fill="#FDA4AF" font-size="10" font-family="JetBrains Mono">Foton tertangkap (b ≤ b_crit)</text>`
+          : `<!-- Actual bent light ray -->
+             <path d="M 50 ${cy - bPx} Q ${bhX} ${cy - bPx}, 495 ${cy}" fill="none" stroke="#F59E0B" stroke-width="2.4"/>
+             <!-- Apparent star position line -->
+             <line x1="495" y1="${cy}" x2="60" y2="${cy - bPx - bendPx}" stroke="rgba(56,189,248,0.45)" stroke-width="1.3" stroke-dasharray="4 3"/>
+             <circle cx="60" cy="${cy - bPx - bendPx}" r="4" fill="none" stroke="#38BDF8" stroke-width="1.5"/>
+             <text x="115" y="${Math.max(16, cy - bPx - bendPx - 6)}" fill="#7DD3FC" font-size="9.5" font-family="Inter">Posisi Semu Bintang (Terlensa)</text>`
+        }
+      `;
+    }
+  } else if (state.physicsTab === 'kerr') {
+    updateKerrCalculator();
+  } else if (state.physicsTab === 'hawking') {
+    const exp = state.hawkingMassExp;
+    const massSolar = Math.pow(10, exp);
+    // T_H for 1 Solar Mass = 6.169e-8 Kelvin
+    const tempK = 6.169e-8 / massSolar;
+
+    document.getElementById('hawking-mass-label').textContent = `10^${exp} M☉`;
+    document.getElementById('hawking-temp-result').textContent = `${tempK.toExponential(2)} K`;
+    document.getElementById('hawking-cmb-compare').textContent = tempK > 2.725
+      ? 'Lebih panas dari CMB (2,725 K): Radiasi neto keluar!'
+      : 'Jauh lebih dingin dari CMB (2,725 K): Menyerap radiasi CMB!';
+    document.getElementById('hawking-interpretation').innerHTML = `<strong>Interpretasi Kuantum &amp; Status Observasi:</strong> Untuk black hole bermassa $10^{${exp}}\\,M_\\odot$, temperatur Hawking hanya <strong>${tempK.toExponential(2)} K</strong>. Karena alam semesta dipenuhi radiasi latar belakang kosmik (CMB) bersuhu 2,725 K, black hole bermassa bintang maupun supermasif justru menyerap lebih banyak energi daripada yang dipancarkannya. Radiasi Hawking tetap menjadi <em>prediksi teoretis fundamental</em> yang belum teramati langsung.`;
+
+    const svg = document.getElementById('svg-hawking');
+    if (svg) {
+      // Plot log10(T_H) vs log10(M/M_sun) from -18 to +9
+      const xPos = 60 + ((exp + 18) / 27) * 430;
+      const logT = Math.log10(tempK); // ranges from ~ +10.8 to -16.2
+      const yPos = 120 - (logT / 18) * 90;
+      const cmbY = 120 - (Math.log10(2.725) / 18) * 90;
+
+      svg.innerHTML = `
+        <!-- Axes -->
+        <line x1="60" y1="210" x2="500" y2="210" stroke="rgba(255,255,255,0.2)"/>
+        <line x1="60" y1="20" x2="60" y2="210" stroke="rgba(255,255,255,0.2)"/>
+        <!-- CMB 2.725 K threshold -->
+        <line x1="60" y1="${cmbY}" x2="500" y2="${cmbY}" stroke="#38BDF8" stroke-width="1.3" stroke-dasharray="5 4"/>
+        <text x="495" y="${cmbY - 6}" text-anchor="end" fill="#38BDF8" font-size="10" font-family="JetBrains Mono">Suhu CMB (2,725 K)</text>
+        <!-- Inverse linear log-log relation line -->
+        <line x1="60" y1="${120 - (10.79 / 18) * 90}" x2="490" y2="${120 - (-16.21 / 18) * 90}" stroke="#F59E0B" stroke-width="2.5"/>
+        <!-- Current point -->
+        <circle cx="${xPos}" cy="${Math.max(24, Math.min(205, yPos))}" r="6" fill="#FBBF24" stroke="#000" stroke-width="2"/>
+        <text x="${Math.min(410, Math.max(70, xPos - 25))}" y="${Math.max(18, Math.min(195, yPos - 12))}" fill="#FEF3C7" font-size="10" font-family="JetBrains Mono">T_H = ${tempK.toExponential(1)} K</text>
+        <text x="280" y="232" text-anchor="middle" fill="#94A3B8" font-size="10" font-family="JetBrains Mono">Log₁₀ Massa (M / M☉)</text>
+      `;
+    }
+  }
+}
+
+function drawAnalogClock(ctx, cx, cy, r, seconds, color, label, timeText) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+  ctx.fill();
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = color;
+  ctx.stroke();
+
+  // Ticks
+  for (let i = 0; i < 12; i++) {
+    const a = (i / 12) * Math.PI * 2;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * (r * 0.82), cy + Math.sin(a) * (r * 0.82));
+    ctx.lineTo(cx + Math.cos(a) * (r * 0.94), cy + Math.sin(a) * (r * 0.94));
+    ctx.strokeStyle = 'rgba(255,255,255,0.35)';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+  }
+
+  // Hand
+  const angle = (seconds * Math.PI) / 3 - Math.PI / 2;
+  ctx.beginPath();
+  ctx.moveTo(cx, cy);
+  ctx.lineTo(cx + Math.cos(angle) * (r * 0.72), cy + Math.sin(angle) * (r * 0.72));
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, 5, 0, Math.PI * 2);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+
+  ctx.fillStyle = '#E2E8F0';
+  ctx.font = 'bold 20px "Space Grotesk", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, cx, cy - r - 18);
+
+  ctx.fillStyle = color;
+  ctx.font = 'bold 22px "JetBrains Mono", monospace';
+  ctx.fillText(timeText, cx, cy + r + 32);
+  ctx.restore();
+}
+
+function onRsSliderChange(val) {
+  state.bhMassSolar = parseFloat(val);
+  updatePhysicsCalculations();
+}
+function setRsPreset(mass) {
+  state.bhMassSolar = mass;
+  updatePhysicsCalculations();
+}
+function onTdSliderChange(val) {
+  state.tdRatio = parseFloat(val);
+  updatePhysicsCalculations();
+}
+function onLensSliderChange(val) {
+  state.lensImpactB = parseFloat(val);
+  updatePhysicsCalculations();
+}
+function onKerrSpinChange(val) {
+  state.kerrSpin = Math.max(0, Math.min(0.998, parseFloat(val)));
+  updateKerrCalculator();
+}
+function onKerrImpactChange(val) {
+  const el = document.getElementById('kerr-impact-label');
+  if (el) el.textContent = Number(val).toFixed(3);
+  updateKerrRayCalculator();
+}
+function onHawkingSliderChange(val) {
+  state.hawkingMassExp = parseFloat(val);
+  updatePhysicsCalculations();
+}
+
+// ============================================================================
+// MODULE G: STELLAR EVOLUTION SIMULATOR
+// ============================================================================
+let stellarAnimId = null;
+
+function renderStellarView() {
+  const isBlackHoleOutcome = state.stellarMass >= 22;
+  const stages = [
+    {
+      name: '1. Main Sequence Star (Bintang Deret Utama)',
+      desc: `Bintang masif (${state.stellarMass} M☉) membakar hidrogen menjadi helium di intinya melalui siklus CNO. Tekanan radiasi fusi nuklir menyeimbangkan gaya gravitasi ke dalam (kesetimbangan hidrostatik).`
+    },
+    {
+      name: '2. Red Supergiant (Superraksasa Merah)',
+      desc: 'Hidrogen inti habis; inti menyusut dan memanas untuk membakar helium, karbon, neon, oksigen, hingga silikon. Lapisan luar mengembang ratusan kali lipat menjadi superraksasa merah.'
+    },
+    {
+      name: '3. Core-Collapse Supernova (Ledakan Supernova)',
+      desc: 'Ketika inti berubah menjadi besi (Fe), fusi tidak lagi menghasilkan energi. Inti runtuh dalam milidetik dan memantulkan gelombang kejut dahsyat yang melontarkan selubung bintang ke ruang antarbintang.'
+    },
+    {
+      name: isBlackHoleOutcome ? '4. Hasil Akhir: Stellar-Mass Black Hole' : '4. Hasil Akhir: Neutron Star (Bintang Neutron)',
+      desc: isBlackHoleOutcome
+        ? `Dalam skenario sederhana simulator ini, massa awal ${state.stellarMass} M☉ ditempatkan pada cabang hasil black hole. Ini <strong>bukan prediksi astrofisika dari massa awal saja</strong>: hasil nyata ditentukan oleh massa inti akhir, kehilangan massa, metalisitas, rotasi, interaksi biner, dan dinamika keruntuhan. Batas TOV berlaku pada massa bintang neutron sisa, bukan langsung pada massa awal bintang.`
+        : `Dalam skenario sederhana simulator ini, massa awal ${state.stellarMass} M☉ ditempatkan pada cabang hasil bintang neutron. Ini <strong>bukan prediksi astrofisika dari massa awal saja</strong>: hasil nyata ditentukan oleh massa inti akhir, kehilangan massa, metalisitas, rotasi, interaksi biner, dan dinamika keruntuhan.`
+    }
+  ];
+
+  const activeInfo = stages[state.stellarStage];
+
+  return `
+    <section class="module-section pointer-events-auto space-y-5">
+      <div class="hud-panel rounded-3xl p-6">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="px-3 py-1 rounded-full bg-orange-500/15 border border-orange-500/30 text-orange-300 font-mono text-xs">
+            MODUL 07 • SIMULATOR EVOLUSI BINTANG MASIF
+          </span>
+          <span class="text-xs font-mono text-slate-300">Batas Massa Pembentukan Black Hole: $M_{\\text{awal}} \\gtrsim 20\\text{–}25\\,M_\\odot$</span>
+        </div>
+        <h2 class="font-display text-2xl sm:text-3xl font-bold text-white mb-2">Dari Bintang Masif Menuju Supernova &amp; Black Hole</h2>
+        <p class="text-sm text-slate-300 max-w-3xl">
+          Atur massa awal bintang deret utama untuk melihat <strong>skenario evolusi ilustratif</strong>. Simulator ini menyederhanakan hubungan massa awal dan hasil akhir; ia bukan model evolusi bintang kuantitatif karena tidak menghitung massa inti, kehilangan massa, metalisitas, rotasi, atau interaksi biner.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <!-- Interactive Canvas Viewport -->
+        <div class="lg:col-span-8 hud-panel rounded-3xl overflow-hidden flex flex-col justify-between">
+          <canvas id="stellar-canvas" class="w-full h-[360px] block bg-black/60"></canvas>
+
+          <!-- Timeline Step Indicators -->
+          <div class="p-4 bg-black/70 border-t border-white/10 space-y-3">
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              ${['1. Main Sequence', '2. Red Supergiant', '3. Supernova', isBlackHoleOutcome ? '4. Black Hole' : '4. Neutron Star'].map((label, idx) => `
+                <button onclick="setStellarStage(${idx})"
+                  class="px-3 py-2 rounded-xl text-xs font-mono border transition ${
+                    state.stellarStage === idx
+                      ? 'bg-amber-500 text-slate-950 border-amber-300 font-bold'
+                      : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10'
+                  }">
+                  ${label}
+                </button>
+              `).join('')}
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <div class="flex items-center gap-2">
+                <button onclick="toggleStellarPlay()"
+                  class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs transition">
+                  ${state.stellarPlaying ? '⏸ Jeda Simulasi' : '▶ Jalankan Simulasi'}
+                </button>
+                <button onclick="resetStellarSim()"
+                  class="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white font-medium text-xs transition">
+                  ↺ Ulangi dari Awal
+                </button>
+              </div>
+              <div class="text-xs font-mono text-amber-300">
+                Hasil skenario ilustratif: <strong>${isBlackHoleOutcome ? 'BLACK HOLE' : 'BINTANG NEUTRON (PULSAR)'}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Controls & Scientific Stage Explanation -->
+        <div class="lg:col-span-4 hud-panel-amber rounded-3xl p-6 flex flex-col justify-between space-y-4">
+          <div class="space-y-4">
+            <div>
+              <div class="flex justify-between text-xs mb-1.5">
+                <span class="text-slate-200 font-medium">Massa Awal Bintang ($M_{\\text{awal}}$)</span>
+                <span id="stellar-mass-val" class="font-mono text-amber-300 font-bold">${state.stellarMass} M☉</span>
+              </div>
+              <input type="range" min="8" max="50" step="1" value="${state.stellarMass}" oninput="updateStellarMass(this.value)">
+              <div class="flex justify-between text-[10px] font-mono text-slate-400 mt-1">
+                <span>8 M☉ (massa awal)</span>
+                <span>22 M☉ (ambang skenario ilustratif)</span>
+                <span>50 M☉ (massa awal)</span>
+              </div>
+            </div>
+
+            <div class="p-4 rounded-2xl bg-black/55 border border-white/10 space-y-2">
+              <div class="text-[11px] font-mono text-amber-400">TAHAP AKTIF</div>
+              <h3 class="font-display text-lg font-bold text-white">${activeInfo.name}</h3>
+              <p class="text-xs sm:text-sm text-slate-300 leading-relaxed">${activeInfo.desc}</p>
+            </div>
+          </div>
+
+          <div class="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/25 text-xs text-slate-300 leading-relaxed">
+            <strong>Batas Tolman–Oppenheimer–Volkoff (TOV):</strong> Batas TOV adalah massa maksimum teoritis bagi bintang neutron statis dan sferis untuk persamaan keadaan tertentu. Nilainya tidak tunggal atau universal; rotasi dan rincian materi padat dapat mengubah batas tersebut. Jika batas kestabilan terlampaui, tidak ada konfigurasi bintang neutron setimbang dalam asumsi model itu.
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function initStellarCanvas() {
+  if (stellarAnimId) cancelAnimationFrame(stellarAnimId);
+  const canvas = document.getElementById('stellar-canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.clientWidth * 2;
+  canvas.height = canvas.clientHeight * 2;
+
+  let lastTime = performance.now();
+
+  function drawStellar(now) {
+    if (state.activeModule !== 'stellar') return;
+    const dt = (now - lastTime) / 1000;
+    lastTime = now;
+
+    if (state.stellarPlaying) {
+      state.stellarProgress += dt * 0.28;
+      if (state.stellarProgress >= 1.0) {
+        if (state.stellarStage < 3) {
+          state.stellarStage += 1;
+          state.stellarProgress = 0;
+          navigateTo('stellar');
+          return;
+        } else {
+          state.stellarProgress = 1.0;
+        }
+      }
+    }
+
+    const w = canvas.width, h = canvas.height;
+    const cx = w / 2, cy = h / 2;
+    ctx.fillStyle = '#04060c';
+    ctx.fillRect(0, 0, w, h);
+
+    // Background stars
+    for (let i = 0; i < 45; i++) {
+      const sx = ((i * 197) % w);
+      const sy = ((i * 313) % h);
+      ctx.fillStyle = 'rgba(255,255,255,0.35)';
+      ctx.fillRect(sx, sy, 2, 2);
+    }
+
+    const p = state.stellarProgress;
+    const isBH = state.stellarMass >= 22;
+
+    if (state.stellarStage === 0) {
+      // Main Sequence Blue-White Massive Star
+      const r = 68 + Math.sin(now * 0.005) * 3 + (state.stellarMass - 8) * 0.6;
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r * 2.1);
+      grad.addColorStop(0, '#FFFFFF');
+      grad.addColorStop(0.35, '#7DD3FC');
+      grad.addColorStop(0.65, 'rgba(56, 189, 248, 0.25)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 2.1, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (state.stellarStage === 1) {
+      // Red Supergiant expansion
+      const r = 95 + p * 85 + Math.sin(now * 0.004) * 5;
+      const grad = ctx.createRadialGradient(cx, cy, r * 0.08, cx, cy, r * 1.45);
+      grad.addColorStop(0, '#FEF08A');
+      grad.addColorStop(0.45, '#EA580C');
+      grad.addColorStop(0.8, 'rgba(185, 28, 28, 0.45)');
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r * 1.45, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Dense iron core indicator
+      ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    } else if (state.stellarStage === 2) {
+      // Supernova Core-Collapse Shockwave
+      const shockR = 30 + p * 340;
+      const flashAlpha = Math.max(0, 1 - p * 0.85);
+      const grad = ctx.createRadialGradient(cx, cy, 5, cx, cy, shockR);
+      grad.addColorStop(0, `rgba(255,255,255,${flashAlpha})`);
+      grad.addColorStop(0.4, `rgba(251,191,36,${flashAlpha * 0.8})`);
+      grad.addColorStop(0.75, `rgba(56,189,248,${flashAlpha * 0.5})`);
+      grad.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      ctx.arc(cx, cy, shockR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Expanding ejecta ring
+      ctx.strokeStyle = `rgba(251, 146, 60, ${1 - p * 0.7})`;
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(cx, cy, shockR * 0.85, 0, Math.PI * 2);
+      ctx.stroke();
+    } else {
+      // Stage 3: Final Remnant (Black Hole vs Neutron Star)
+      if (isBH) {
+        // Accretion glow & Black Hole Shadow
+        const glow = ctx.createRadialGradient(cx, cy, 42, cx, cy, 180);
+        glow.addColorStop(0, '#F59E0B');
+        glow.addColorStop(0.35, 'rgba(234,88,12,0.45)');
+        glow.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 180, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Tilted accretion disk ellipse
+        ctx.strokeStyle = '#FBBF24';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 155, 34, -0.18, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Central Black Hole Shadow
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 46, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = '#FEF3C7';
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      } else {
+        // Rapidly spinning Neutron Star / Pulsar with magnetic beams
+        const rot = now * 0.012;
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(rot);
+        const beamGrad = ctx.createLinearGradient(-260, 0, 260, 0);
+        beamGrad.addColorStop(0, 'rgba(56,189,248,0)');
+        beamGrad.addColorStop(0.5, 'rgba(56,189,248,0.85)');
+        beamGrad.addColorStop(1, 'rgba(56,189,248,0)');
+        ctx.fillStyle = beamGrad;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-260, -28);
+        ctx.lineTo(-260, 28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(260, -28);
+        ctx.lineTo(260, 28);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+
+        ctx.fillStyle = '#E0F2FE';
+        ctx.beginPath();
+        ctx.arc(cx, cy, 22, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    stellarAnimId = requestAnimationFrame(drawStellar);
+  }
+
+  stellarAnimId = requestAnimationFrame(drawStellar);
+}
+
+function updateStellarMass(val) {
+  state.stellarMass = parseInt(val, 10);
+  navigateTo('stellar');
+}
+
+function setStellarStage(idx) {
+  state.stellarStage = idx;
+  state.stellarProgress = 0.35;
+  navigateTo('stellar');
+}
+
+function toggleStellarPlay() {
+  state.stellarPlaying = !state.stellarPlaying;
+  navigateTo('stellar');
+}
+
+function resetStellarSim() {
+  state.stellarStage = 0;
+  state.stellarProgress = 0;
+  state.stellarPlaying = true;
+  navigateTo('stellar');
+}
+
+// ============================================================================
+// MODULE H: INTERSTELLAR: SCIENCE BEHIND THE FICTION (STUDI KASUS GARGANTUA)
+// ============================================================================
+function renderInterstellarView() {
+  return `
+    <section class="module-section pointer-events-auto space-y-5">
+      <div class="hud-panel-amber rounded-3xl p-6 sm:p-8">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+          <span class="px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 font-mono text-xs">
+            MODUL 08 • STUDI KASUS: SAINS DI BALIK FIKSI FILM INTERSTELLAR
+          </span>
+          <span class="text-xs font-mono text-sky-300">Kolaborasi Fisikawan Teoretis Kip Thorne &amp; Tim VFX DNGR</span>
+        </div>
+        <h2 class="font-display text-2xl sm:text-4xl font-bold text-white mb-3">Gargantua: Membedah Fisika Black Hole Kerr Ekstrem</h2>
+        <p class="text-sm sm:text-base text-slate-300 max-w-4xl leading-relaxed">
+          Dalam film <em>Interstellar</em> (2014), black hole supermasif <strong>Gargantua</strong> ($M \\approx 10^8\\,M_\\odot$) divisualisasikan menggunakan mesin <em>ray-tracing</em> relativistik (Double Negative Gravitational Renderer) yang memecahkan persamaan geodetik cahaya dalam metrik <strong>Kerr</strong>. Namun, demi kebutuhan sinematografi dan keselamatan tokoh fiksi, terdapat batasan antara sains nyata dan kebebasan artistik.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div class="hud-panel rounded-3xl p-6 space-y-3">
+          <div class="text-xs font-mono text-emerald-400">● AKURAT SECARA ILMIAH (SIMULASI METRIK KERR)</div>
+          <h3 class="font-display text-xl font-bold text-white">1. Pelensaan Gravitasi &amp; Piringan Terbelah</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Visualisasi Gargantua yang tampak memiliki cincin cahaya melengkung di atas dan di bawah bayangan pusatnya merupakan hasil langsung persamaan Relativitas Umum. Cahaya dari bagian piringan akresi yang berada di belakang black hole dibelokkan melewati kutub atas dan bawah menuju kamera pengamat.
+          </p>
+          <div class="p-3 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300">
+            <strong>Fakta Sejarah Sains:</strong> Simulasi visual film ini menghasilkan publikasi ilmiah resmi oleh Oliver James, Eugénie von Tunzelmann, Paul Franklin, dan Kip Thorne di jurnal <em>Classical and Quantum Gravity</em> (2015).
+          </div>
+        </div>
+
+        <div class="hud-panel rounded-3xl p-6 space-y-3">
+          <div class="text-xs font-mono text-emerald-400">● AKURAT SECARA TEORETIS (EXTREMAL SPIN)</div>
+          <h3 class="font-display text-xl font-bold text-white">2. Dilatasi Waktu Ekstrem di Planet Miller (1 Jam = 7 Tahun)</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Rasio waktu dalam skenario film—sekitar $1\\text{ jam}$ di planet Miller setara dengan $7\\text{ tahun}$ bagi pengamat jauh (faktor sekitar $6,1\\times10^4$)—bukan konsekuensi otomatis dari setiap black hole berotasi. Skenario tersebut memerlukan orbit prograde yang sangat dekat dengan horizon pada geometri Kerr yang nyaris ekstremal, serta konfigurasi orbit dan parameter model yang sangat khusus. Angka spin yang mendekati satu harus dibaca sebagai asumsi model film, bukan nilai hasil pengamatan atau syarat universal bagi dilatasi waktu ekstrem.</p>
+          <div class="p-3 rounded-xl bg-white/[0.04] border border-white/10 text-xs text-slate-300">
+            <strong>Mengapa mungkin pada Kerr?</strong> Rotasi ekstrem memperkecil radius orbit stabil terdalam ($r_{\\text{ISCO}}$) mendekati $0,5\\,r_s$, memungkinkan orbit stabil di zona dilatasi waktu ekstrem.
+          </div>
+        </div>
+
+        <div class="hud-panel rounded-3xl p-6 space-y-3">
+          <div class="text-xs font-mono text-amber-400">● KOMPROMI ARTISTIK SINEMA (FIKSI VISUAL)</div>
+          <h3 class="font-display text-xl font-bold text-white">3. Mengapa Tidak Terlihat Pergeseran Warna Doppler Asimetris?</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Dalam model relativistik, gerak orbital plasma dapat menghasilkan Doppler boosting dan pergeseran frekuensi yang bergantung pada kecepatan, arah gerak, sudut pandang, serta spektrum emisi. Efek ini tidak dapat dinilai kuantitatif dari shader heuristik pada Modul 3D Explorer.
+          </p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Sutradara Christopher Nolan memutuskan untuk menyederhanakan efek <em>Doppler color shift</em> tersebut agar tampilan Gargantua lebih simetris, hangat keemasan, dan mudah dipahami oleh penonton bioskop.
+          </p>
+        </div>
+
+        <div class="hud-panel rounded-3xl p-6 space-y-3">
+          <div class="text-xs font-mono text-amber-400">● KOMPROMI ARTISTIK SINEMA (LINGKUNGAN RADIASI)</div>
+          <h3 class="font-display text-xl font-bold text-white">4. Radiasi Sinar-X Piringan Akresi</h3>
+          <p class="text-sm text-slate-300 leading-relaxed">
+            Piringan akresi aktif yang bercahaya terang pada panjang gelombang optik seperti di film sebenarnya memancarkan radiasi sinar-X dan sinar gamma mematikan yang akan mensterilkan planet di dekatnya dalam sekejap.
+          </p>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Untuk menjaga konsistensi ilmiah dalam bukunya <em>The Science of Interstellar</em>, Kip Thorne menjelaskan bahwa Gargantua harus diasumsikan memiliki piringan akresi "kelaparan" (<em>anemic disk</em>) bersuhu relatif rendah (~jutaan derajat lebih dingin dari quasar aktif).
+          </p>
+        </div>
+      </div>
+
+      <div class="hud-panel p-5 rounded-2xl flex flex-wrap items-center justify-between gap-4">
+        <div class="text-xs sm:text-sm text-slate-300">
+          <strong>Bandingkan Langsung:</strong> Latar belakang memakai Mode Artistik dengan kontrol rotasi visual 0,998 dan efek <em>Doppler Beaming</em> aktif. Angka ini bukan parameter spin Kerr fisis dan lintasannya tidak dihitung dari metrik Kerr.
+        </div>
+        <button onclick="navigateTo('explorer')" class="px-4 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 border border-sky-400/40 text-sky-300 text-xs font-semibold transition">
+          Uji Toggle Doppler On/Off di 3D Explorer →
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+// ============================================================================
+// MODULE I: KNOWLEDGE CHALLENGE (KUIS INTERAKTIF 10 SOAL)
+// ============================================================================
+function renderQuizView() {
+  const total = QUIZ_QUESTIONS.length;
+  const answeredCount = state.quizAnswers.filter(a => a !== null).length;
+  const score = state.quizAnswers.reduce((acc, ans, idx) => acc + (ans === QUIZ_QUESTIONS[idx].correct ? 1 : 0), 0);
+
+  if (state.quizFinished) {
+    const pct = Math.round((score / total) * 100);
+    let rank = 'Pengamat Kosmik Pemula';
+    if (pct >= 90) rank = 'Astrofisikawan Relativistik Utama';
+    else if (pct >= 70) rank = 'Peneliti Observatorium Event Horizon';
+    else if (pct >= 50) rank = 'Kadet Eksplorasi Ruang-Waktu';
+
+    return `
+      <section class="module-section pointer-events-auto max-w-3xl mx-auto">
+        <div class="hud-panel-amber rounded-3xl p-6 sm:p-8 text-center space-y-5">
+          <div class="inline-flex px-3 py-1 rounded-full bg-amber-500/20 border border-amber-400/40 text-amber-200 font-mono text-xs">
+            HASIL EVALUASI KNOWLEDGE CHALLENGE
+          </div>
+          <h2 class="font-display text-3xl sm:text-4xl font-bold text-white">${rank}</h2>
+          <div class="flex justify-center items-baseline gap-2">
+            <span class="font-display text-6xl font-bold text-amber-400">${score}</span>
+            <span class="font-mono text-xl text-slate-400">/ ${total} (${pct}%)</span>
+          </div>
+          <p class="text-sm text-slate-300 max-w-xl mx-auto leading-relaxed">
+            Anda telah menyelesaikan seluruh tantangan pemahaman mengenai konsep relativitas umum, struktur anatomi black hole, bukti observasi EHT/LIGO, serta fisika kuantum horizon peristiwa.
+          </p>
+          <div class="pt-2 flex flex-wrap justify-center gap-3">
+            <button onclick="restartQuiz()" class="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-display font-bold text-sm transition">
+              ↺ Ulangi Kuis dari Awal
+            </button>
+            <button onclick="navigateTo('explorer')" class="px-6 py-3 rounded-2xl hud-panel hover:bg-white/10 text-white font-medium text-sm transition">
+              Kembali ke 3D Explorer
+            </button>
+          </div>
+        </div>
+      </section>
+    `;
+  }
+
+  const qObj = QUIZ_QUESTIONS[state.quizIndex];
+  const userAns = state.quizAnswers[state.quizIndex];
+  const isAnswered = userAns !== null;
+
+  return `
+    <section class="module-section pointer-events-auto max-w-4xl mx-auto space-y-5">
+      <!-- Top Progress Header -->
+      <div class="hud-panel rounded-3xl p-5 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <div class="text-[11px] font-mono text-amber-400">MODUL 09 • KNOWLEDGE CHALLENGE</div>
+          <h2 class="font-display text-xl sm:text-2xl font-bold text-white">Uji Pemahaman Astrofisika Black Hole</h2>
+        </div>
+        <div class="flex items-center gap-4 font-mono text-xs">
+          <span class="px-3 py-1.5 rounded-xl bg-white/5 border border-white/10 text-slate-300">
+            Soal <strong>${state.quizIndex + 1}</strong> / ${total}
+          </span>
+          <span class="px-3 py-1.5 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-300">
+            Skor Benar: <strong>${score}</strong>
+          </span>
+        </div>
+      </div>
+
+      <!-- Question Card -->
+      <div class="hud-panel-amber rounded-3xl p-6 sm:p-8 space-y-5">
+        <div class="w-full h-1.5 bg-white/10 rounded-full overflow-hidden">
+          <div class="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-300" style="width:${((state.quizIndex + 1) / total) * 100}%"></div>
+        </div>
+
+        <h3 class="font-display text-lg sm:text-xl font-bold text-white leading-snug">
+          ${qObj.q}
+        </h3>
+
+        <div class="space-y-2.5">
+          ${qObj.options.map((opt, idx) => {
+            let btnStyle = 'bg-white/[0.04] hover:bg-white/[0.09] border-white/15 text-slate-200';
+            let badge = String.fromCharCode(65 + idx);
+            if (isAnswered) {
+              if (idx === qObj.correct) {
+                btnStyle = 'bg-emerald-500/20 border-emerald-400 text-emerald-100';
+                badge = '✓';
+              } else if (idx === userAns) {
+                btnStyle = 'bg-rose-500/20 border-rose-400 text-rose-100';
+                badge = '✕';
+              } else {
+                btnStyle = 'bg-white/[0.02] border-white/10 text-slate-400 opacity-70';
+              }
+            }
+            return `
+              <button onclick="selectQuizOption(${idx})" ${isAnswered ? 'disabled' : ''}
+                class="w-full text-left p-4 rounded-2xl border transition flex items-start gap-3.5 ${btnStyle}">
+                <span class="w-7 h-7 rounded-lg bg-black/50 border border-white/15 flex items-center justify-center font-mono text-xs font-bold shrink-0 mt-0.5">
+                  ${badge}
+                </span>
+                <span class="text-xs sm:text-sm leading-relaxed">${opt}</span>
+              </button>
+            `;
+          }).join('')}
+        </div>
+
+        ${isAnswered ? `
+          <div class="p-4 rounded-2xl ${userAns === qObj.correct ? 'bg-emerald-500/15 border border-emerald-500/35' : 'bg-amber-500/15 border border-amber-500/35'} space-y-1.5">
+            <div class="font-display font-bold text-sm ${userAns === qObj.correct ? 'text-emerald-300' : 'text-amber-300'}">
+              ${userAns === qObj.correct ? 'Jawaban Tepat!' : 'Kurang Tepat — Mari Tinjau Penjelasan Ilmiahnya:'}
+            </div>
+            <p class="text-xs sm:text-sm text-slate-200 leading-relaxed">${qObj.explanation}</p>
+          </div>
+        ` : ''}
+
+        <!-- Navigation Buttons -->
+        <div class="pt-2 flex items-center justify-between gap-3">
+          <button onclick="prevQuizQuestion()" ${state.quizIndex === 0 ? 'disabled' : ''}
+            class="px-4 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 disabled:opacity-40 text-xs font-medium text-slate-300 transition">
+            ← Sebelumnya
+          </button>
+
+          ${state.quizIndex < total - 1 ? `
+            <button onclick="nextQuizQuestion()"
+              class="px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-semibold text-xs sm:text-sm transition">
+              Soal Berikutnya →
+            </button>
+          ` : `
+            <button onclick="finishQuiz()" ${answeredCount < total ? '' : ''}
+              class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-bold text-xs sm:text-sm transition">
+              Lihat Skor Akhir (${answeredCount}/${total} Terjawab)
+            </button>
+          `}
+        </div>
+      </div>
+    </section>
+  `;
+}
+
+function selectQuizOption(idx) {
+  if (state.quizAnswers[state.quizIndex] !== null) return;
+  state.quizAnswers[state.quizIndex] = idx;
+  navigateTo('quiz');
+}
+
+function prevQuizQuestion() {
+  if (state.quizIndex > 0) {
+    state.quizIndex -= 1;
+    navigateTo('quiz');
+  }
+}
+
+function nextQuizQuestion() {
+  if (state.quizIndex < QUIZ_QUESTIONS.length - 1) {
+    state.quizIndex += 1;
+    navigateTo('quiz');
+  }
+}
+
+function finishQuiz() {
+  state.quizFinished = true;
+  navigateTo('quiz');
+}
+
+function restartQuiz() {
+  state.quizIndex = 0;
+  state.quizAnswers = new Array(QUIZ_QUESTIONS.length).fill(null);
+  state.quizFinished = false;
+  navigateTo('quiz');
+}
+
+// ============================================================================
+// 4. BOOTSTRAP APPLICATION ON WINDOW LOAD
+// ============================================================================
+window.onload = function () {
+  initBlackHoleEngine();
+  navigateTo('hero');
+  mqMobile.addEventListener('change', () => { onWindowResize(); navigateTo(state.activeModule); });
+  animate();
+};
+</script>
+</body>
+</html>
