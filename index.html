@@ -606,7 +606,6 @@ const fragmentShader = `
   uniform float uJets;
   uniform float uExploded;
   uniform int uRayMode; // 1: Schwarzschild null geodesic; 0: legacy artistic approximation
-  uniform int uMaxSteps; // Batas iterasi adaptif berdasarkan kemampuan perangkat
   uniform int uHighlightPart; // 0: none, 1: horizon, 2: disk, 3: photon sphere, 4: shadow, 5: singularity
   uniform float uZoom;
   uniform vec2 uOff;
@@ -770,7 +769,6 @@ const fragmentShader = `
     // More angular steps are needed near the critical photon orbit.
     const int MAX_STEPS = 512;
     for (int i = 0; i < MAX_STEPS; i++) {
-      if (i >= uMaxSteps) break;
       float r = length(pos);
 
       // Event horizon capture check
@@ -954,34 +952,11 @@ const fragmentShader = `
 const mqMobile = window.matchMedia('(max-width: 767px)');
 let viewZoomCur = 1.0;
 let viewOffY = 0.0;
-
-// Profil performa perangkat: kualitas visual disesuaikan tanpa mengubah
-// persamaan geodesik, konstanta fisika, maupun model emisi yang digunakan.
-const deviceMemoryGB = Number(navigator.deviceMemory || 0);
-const hardwareThreads = Number(navigator.hardwareConcurrency || 0);
-const isLowEndDevice =
-  (deviceMemoryGB > 0 && deviceMemoryGB <= 4) ||
-  (hardwareThreads > 0 && hardwareThreads <= 4);
-const isMobileDevice = mqMobile.matches || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-const renderQuality = isLowEndDevice ? 'low' : (isMobileDevice ? 'mobile' : 'desktop');
-
 function isMobile() { return mqMobile.matches; }
 function getRenderDPR() {
   const d = window.devicePixelRatio || 1;
-  if (renderQuality === 'low') return Math.min(d, 0.50);
-  if (renderQuality === 'mobile') return Math.min(d, 0.68);
-  return Math.min(d, state.rayModel === 'schwarzschild' ? 1.15 : 1.5);
-}
-function getRayStepBudget() {
-  if (renderQuality === 'low') return 112;
-  if (renderQuality === 'mobile') return 176;
-  return 512;
-}
-function getTargetFPS() {
-  if (document.hidden) return 0;
-  if (renderQuality === 'low') return (state.activeModule === 'hero' || state.activeModule === 'explorer' || state.activeModule === 'anatomy') ? 24 : 12;
-  if (renderQuality === 'mobile') return (state.activeModule === 'hero' || state.activeModule === 'explorer' || state.activeModule === 'anatomy') ? 30 : 15;
-  return 60;
+  if (isMobile()) return Math.min(d, state.rayModel === 'schwarzschild' ? 0.75 : 1.0);
+  return Math.min(d, state.rayModel === 'schwarzschild' ? 1.15 : 1.75);
 }
 function viewZoomFactor() {
   const a = window.innerWidth / window.innerHeight;
@@ -1030,7 +1005,6 @@ function initBlackHoleEngine() {
       uJets: { value: state.jets ? 1.0 : 0.0 },
       uExploded: { value: 0.0 },
       uRayMode: { value: state.rayModel === 'schwarzschild' ? 1 : 0 },
-      uMaxSteps: { value: getRayStepBudget() },
       uHighlightPart: { value: 0 },
       uZoom: { value: 1.0 },
       uOff: { value: new THREE.Vector2(0, 0) }
@@ -1048,7 +1022,6 @@ function onWindowResize() {
   if (!renderer || !blackHoleMesh) return;
   const dpr = getRenderDPR();
   renderer.setPixelRatio(dpr);
-  if (blackHoleMesh) blackHoleMesh.material.uniforms.uMaxSteps.value = getRayStepBudget();
   renderer.setSize(window.innerWidth, window.innerHeight);
   blackHoleMesh.material.uniforms.uResolution.value.set(
     window.innerWidth * dpr,
@@ -1104,13 +1077,20 @@ function setupCanvasInteractions(canvas) {
   }, { passive: true });
 }
 
+// Reusable scratch vectors: avoids creating several THREE.Vector3 objects per annotation/frame.
+const annotationForward = new THREE.Vector3();
+const annotationRight = new THREE.Vector3();
+const annotationUp = new THREE.Vector3();
+const annotationRel = new THREE.Vector3();
+const annotationWorldUp = new THREE.Vector3(0, 1, 0);
+
 // Project 3D world point onto 2D screen coordinates for Spatial Annotation Pins
 function project3DToScreen(worldVec, camPos, camTarget) {
-  const forward = new THREE.Vector3().subVectors(camTarget, camPos).normalize();
-  const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-  const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+  const forward = annotationForward.subVectors(camTarget, camPos).normalize();
+  const right = annotationRight.crossVectors(forward, annotationWorldUp).normalize();
+  const up = annotationUp.crossVectors(right, forward).normalize();
 
-  const rel = new THREE.Vector3().subVectors(worldVec, camPos);
+  const rel = annotationRel.subVectors(worldVec, camPos);
   const z = rel.dot(forward);
   if (z <= 0.1) return null;
 
@@ -1165,19 +1145,12 @@ function updateSpatialAnnotations(camPos, camTarget) {
   layer.innerHTML = html;
 }
 
-let lastMainRenderTime = 0;
-function animate(now = performance.now()) {
+const anatomyHighlightMap = { none: 0, event_horizon: 1, accretion_disk: 2, photon_sphere: 3, shadow: 4, singularity: 5 };
+let lastAnnotationUpdate = 0;
+
+function animate() {
   requestAnimationFrame(animate);
-
-  // Batasi frekuensi render pada perangkat terbatas. Perhitungan fisika shader
-  // tetap memakai persamaan yang sama; hanya jumlah sampel visual per frame
-  // dan frekuensi gambar yang disesuaikan.
-  const targetFPS = getTargetFPS();
-  if (targetFPS <= 0) return;
-  const frameInterval = 1000 / targetFPS;
-  if (now - lastMainRenderTime < frameInterval) return;
-  lastMainRenderTime = now;
-
+  if (document.hidden) return;
   const elapsed = clock.getElapsedTime();
 
   // Gentle auto-orbit on Hero or when enabled
@@ -1213,7 +1186,6 @@ function animate(now = performance.now()) {
     u.uDoppler.value += ((state.doppler ? 1.0 : 0.0) - u.uDoppler.value) * 0.1;
     u.uJets.value += ((state.jets ? 1.0 : 0.0) - u.uJets.value) * 0.1;
     u.uRayMode.value = state.rayModel === 'schwarzschild' ? 1 : 0;
-    u.uMaxSteps.value = getRayStepBudget();
     viewZoomCur = viewZoomFactor();
     viewOffY += (-targetShiftY() * viewZoomCur - viewOffY) * 0.1;
     u.uZoom.value = viewZoomCur;
@@ -1222,11 +1194,15 @@ function animate(now = performance.now()) {
     const targetExploded = (state.activeModule === 'anatomy' && state.explodedMode) ? 1.0 : 0.0;
     u.uExploded.value += (targetExploded - u.uExploded.value) * 0.08;
 
-    const partMap = { none: 0, event_horizon: 1, accretion_disk: 2, photon_sphere: 3, shadow: 4, singularity: 5 };
-    u.uHighlightPart.value = (state.activeModule === 'anatomy') ? (partMap[state.selectedAnatomy] || 0) : 0;
+    u.uHighlightPart.value = (state.activeModule === 'anatomy') ? (anatomyHighlightMap[state.selectedAnatomy] || 0) : 0;
   }
 
-  updateSpatialAnnotations(camPos, camTarget);
+  // Annotation DOM updates are limited to 20 Hz; the 3D scene itself keeps rendering at the browser's native RAF cadence.
+  const annotationNow = performance.now();
+  if (annotationNow - lastAnnotationUpdate >= 50) {
+    updateSpatialAnnotations(camPos, camTarget);
+    lastAnnotationUpdate = annotationNow;
+  }
   renderer.render(scene, camera);
 }
 
@@ -2182,9 +2158,8 @@ async function initARCanvasFallback() {
   const canvas = document.getElementById('ar-fallback-canvas');
   if (!canvas) return;
 
-  fallbackRenderer = new THREE.WebGLRenderer({ canvas, antialias: renderQuality === 'desktop', alpha: true, powerPreference: 'low-power' });
-  const arDPRCap = renderQuality === 'low' ? 0.65 : (renderQuality === 'mobile' ? 0.9 : 1.25);
-  fallbackRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, arDPRCap));
+  fallbackRenderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  fallbackRenderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   fallbackRenderer.setSize(canvas.clientWidth, canvas.clientHeight);
 
   fallbackScene = new THREE.Scene();
